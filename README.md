@@ -1,6 +1,8 @@
 # Video Annotator
 
-Ekran üzerinde şeffaf bir overlay ile hızlı annotation yapmanızı sağlayan masaüstü uygulaması.
+Ekranınızın tamamında, şeffaf bir katman üzerinde veya seçtiğiniz herhangi bir görselin üzerinde çizim ve düzenleme yapmanıza olanak tanıyan gelişmiş bir ekran alıntısı ve işaretleme aracıdır.
+
+“Video Annotator” adını taşımasının sebebi ise, klasik ekran alıntısı araçlarından farklı olarak özellikle video düzenleme ile ilgilenen kullanıcıları hedeflemesidir. Video içerisinden alınan karelerin, ana video editörünü kalabalıklaştırmadan, hızlı ve pratik bir şekilde düzenlenmesini sağlayan özel kolaylıklar sunar.
 
 <p align="center">
   <img src="assets/screenshots/1.png" alt="Dikey Toolbar" height="400" />
