@@ -1,5 +1,7 @@
 # Video Annotator
 
+![Windows](https://img.shields.io/badge/Platform-Windows-blue?logo=windows)
+
 Ekranınızın tamamında, şeffaf bir katman üzerinde veya seçtiğiniz herhangi bir görselin üzerinde çizim ve düzenleme yapmanıza olanak tanıyan gelişmiş bir ekran alıntısı ve işaretleme aracıdır.
 
 “Video Annotator” adını taşımasının sebebi ise, klasik ekran alıntısı araçlarından farklı olarak özellikle video düzenleme ile ilgilenen kullanıcıları hedeflemesidir. Video içerisinden alınan karelerin, ana video editörünü kalabalıklaştırmadan, hızlı ve pratik bir şekilde düzenlenmesini sağlayan özel kolaylıklar sunar.
@@ -46,6 +48,10 @@ npm run package
 2. Sol panelden araç seç
 3. Ekran üzerinde çiz
 4. `Ctrl+S` ile kaydet veya upload butonuyla paylaş
+
+### Resim Dosyalarını Düzenleme
+
+Hazır bir resim dosyasını doğrudan düzenlemek için program ayarlarından **sağ tık menüsünü** etkinleştirin. Bu sayede herhangi bir resim dosyasına sağ tıklayıp "Video Annotator ile Düzenle" seçeneğini kullanabilirsiniz.
 
 ## Kısayollar
 
