@@ -2,6 +2,12 @@
 
 Ekran üzerinde şeffaf bir overlay ile hızlı annotation yapmanızı sağlayan masaüstü uygulaması.
 
+<p align="center">
+  <img src="assets/screenshots/1.png" alt="Dikey Toolbar" height="400" />
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="assets/screenshots/2.png" alt="Yatay Toolbar" height="60" />
+</p>
+
 ## Özellikler
 
 - **Çizim Araçları:** Ok, dikdörtgen, elips, çizgi, serbest çizim, metin, marker
