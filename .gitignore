@@ -1,0 +1,12 @@
+node_modules/
+dist/
+release/
+*.log
+.DS_Store
+Thumbs.db
+
+# Compiled output in src (should only be in dist)
+src/**/*.js
+src/**/*.d.ts
+src/**/*.d.ts.map
+!src/**/*.config.js

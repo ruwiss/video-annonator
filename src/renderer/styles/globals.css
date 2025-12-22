@@ -1,0 +1,314 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   BASE STYLES
+   ============================================ */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: transparent;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* ============================================
+   TRANSPARENT WINDOW SUPPORT
+   ============================================ */
+
+body {
+    -webkit-app-region: no-drag;
+    user-select: none;
+}
+
+.draggable {
+    -webkit-app-region: drag;
+}
+
+.no-drag {
+    -webkit-app-region: no-drag;
+}
+
+/* ============================================
+   SCROLLBAR STYLING
+   ============================================ */
+
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* ============================================
+   CANVAS CURSORS
+   ============================================ */
+
+.cursor-crosshair {
+    cursor: crosshair;
+}
+
+.cursor-move {
+    cursor: move;
+}
+
+.cursor-text {
+    cursor: text;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.cursor-grab {
+    cursor: grab;
+}
+
+.cursor-grabbing {
+    cursor: grabbing;
+}
+
+/* ============================================
+   TOOL PANEL STYLES
+   ============================================ */
+
+.tool-panel {
+    @apply fixed left-4 top-1/2;
+    transform: translateY(-50%);
+    @apply flex flex-col gap-1 p-2;
+    @apply bg-overlay-panel backdrop-blur-panel;
+    @apply border border-overlay-border rounded-xl;
+    @apply shadow-2xl;
+    z-index: 40;
+}
+
+.tool-btn {
+    @apply w-10 h-10 flex items-center justify-center;
+    @apply rounded-lg transition-all duration-150;
+    @apply text-zinc-300 hover:text-white;
+    @apply hover:bg-white/10;
+}
+
+.tool-btn svg {
+    stroke: currentColor;
+}
+
+.tool-btn.active {
+    @apply bg-accent-primary text-white;
+    @apply shadow-lg shadow-accent-primary/25;
+}
+
+.tool-btn.active svg {
+    stroke: white;
+}
+
+.tool-btn:focus-visible {
+    @apply outline-none ring-2 ring-accent-primary ring-offset-2 ring-offset-zinc-900;
+}
+
+/* ============================================
+   OPTIONS PANEL STYLES
+   ============================================ */
+
+.options-panel {
+    @apply fixed bottom-4 left-1/2;
+    transform: translateX(-50%);
+    @apply flex items-center gap-3 px-4 py-2.5;
+    @apply bg-zinc-900/95 backdrop-blur-xl;
+    @apply border border-zinc-700/50 rounded-2xl;
+    @apply shadow-2xl;
+    z-index: 40;
+}
+
+.action-btn {
+    @apply w-9 h-9 flex items-center justify-center;
+    @apply rounded-lg transition-all duration-150;
+    @apply text-zinc-400 hover:text-white;
+    @apply hover:bg-white/10;
+}
+
+.action-btn svg {
+    stroke: currentColor;
+}
+
+/* ============================================
+   COLOR PICKER
+   ============================================ */
+
+.color-swatch {
+    @apply w-6 h-6 rounded-full cursor-pointer;
+    @apply border-2 border-transparent;
+    @apply transition-transform duration-150;
+    @apply hover:scale-110;
+}
+
+.color-swatch.active {
+    @apply border-white scale-110;
+    @apply ring-2 ring-white/30;
+}
+
+/* ============================================
+   INPUT STYLES
+   ============================================ */
+
+.input-field {
+    @apply bg-zinc-800/50 border border-zinc-700;
+    @apply rounded-lg px-3 py-2;
+    @apply text-white text-sm;
+    @apply focus:outline-none focus:border-accent-primary;
+    @apply transition-colors duration-150;
+}
+
+.input-field::placeholder {
+    @apply text-zinc-500;
+}
+
+/* ============================================
+   BUTTON STYLES
+   ============================================ */
+
+.btn {
+    @apply px-4 py-2 rounded-lg font-medium;
+    @apply transition-all duration-150;
+    @apply focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-zinc-900;
+}
+
+.btn-primary {
+    @apply bg-accent-primary text-white;
+    @apply hover:bg-blue-600;
+    @apply focus:ring-accent-primary;
+}
+
+.btn-secondary {
+    @apply bg-zinc-700 text-white;
+    @apply hover:bg-zinc-600;
+    @apply focus:ring-zinc-500;
+}
+
+.btn-ghost {
+    @apply bg-transparent text-zinc-400;
+    @apply hover:bg-white/10 hover:text-white;
+}
+
+.btn-danger {
+    @apply bg-accent-danger text-white;
+    @apply hover:bg-red-600;
+    @apply focus:ring-accent-danger;
+}
+
+/* ============================================
+   TOOLTIP
+   ============================================ */
+
+.tooltip {
+    @apply absolute z-50 px-2 py-1;
+    @apply bg-zinc-900 text-white text-xs;
+    @apply rounded shadow-lg;
+    @apply pointer-events-none;
+    @apply opacity-0 transition-opacity duration-150;
+}
+
+.tooltip.visible {
+    @apply opacity-100;
+}
+
+/* ============================================
+   REGION SELECTION
+   ============================================ */
+
+.region-overlay {
+    @apply fixed inset-0;
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.region-selection {
+    @apply absolute border-2 border-dashed border-accent-primary;
+    @apply bg-accent-primary/10;
+}
+
+.region-handle {
+    @apply absolute w-3 h-3 bg-white rounded-full;
+    @apply border-2 border-accent-primary;
+    @apply cursor-pointer;
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+
+@keyframes pulse-ring {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(1.5);
+        opacity: 0;
+    }
+}
+
+.pulse-ring {
+    animation: pulse-ring 1s ease-out infinite;
+}
+
+/* ============================================
+   DRAG WIDGET
+   ============================================ */
+
+.drag-widget {
+    @apply w-20 h-20 rounded-xl overflow-hidden;
+    @apply bg-overlay-panel backdrop-blur-panel;
+    @apply border border-overlay-border;
+    @apply shadow-2xl cursor-grab;
+    @apply flex items-center justify-center;
+    @apply transition-transform duration-150;
+    @apply hover:scale-105;
+}
+
+.drag-widget:active {
+    @apply cursor-grabbing scale-95;
+}
+
+/* ============================================
+   SETTINGS PANEL
+   ============================================ */
+
+.settings-section {
+    @apply mb-6;
+}
+
+.settings-label {
+    @apply block text-sm font-medium text-zinc-400 mb-2;
+}
+
+.settings-row {
+    @apply flex items-center justify-between py-3;
+    @apply border-b border-zinc-800;
+}
+
+.settings-row:last-child {
+    @apply border-b-0;
+}
