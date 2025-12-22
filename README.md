@@ -21,6 +21,12 @@ Ekranınızın tamamında, şeffaf bir katman üzerinde veya seçtiğiniz herhan
 
 ## Kurulum
 
+### Hazır Kurulum (Önerilen)
+
+[**Releases**](https://github.com/ruwiss/video-annonator/releases/latest) sayfasından en güncel sürümü indirip kurabilirsiniz.
+
+### Kaynak Koddan Derleme
+
 ```bash
 # Bağımlılıkları yükle
 npm install
@@ -36,10 +42,10 @@ npm run package
 
 ## Kullanım
 
-1. **Ctrl+Shift+A** ile overlay'i aç/kapat
+1. `Ctrl+Shift+A` ile overlay'i aç/kapat
 2. Sol panelden araç seç
 3. Ekran üzerinde çiz
-4. **Ctrl+S** ile kaydet veya upload butonuyla paylaş
+4. `Ctrl+S` ile kaydet veya upload butonuyla paylaş
 
 ## Kısayollar
 
