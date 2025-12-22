@@ -696,6 +696,8 @@ export const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({ width, heigh
         if ((rect.width || 0) > 10 && (rect.height || 0) > 10) {
           const blurRect = await createBlurRect(rect.left || 0, rect.top || 0, rect.width || 0, rect.height || 0, config.blurStyle, config.blurIntensity, imageMode, screenCapture);
           canvas.add(blurRect);
+          canvas.setActiveObject(blurRect); // Auto-select the new blur
+          setActiveTool("select"); // Switch to select mode for editing
           saveHistory();
         }
       }
