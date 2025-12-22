@@ -5,9 +5,20 @@ import { CloseIcon, FolderIcon } from "../components/icons";
 export const SettingsView: React.FC = () => {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [isSaving, setIsSaving] = useState(false);
+  const [contextMenuRegistered, setContextMenuRegistered] = useState(false);
+  const [contextMenuLoading, setContextMenuLoading] = useState(true);
 
   useEffect(() => {
     window.electronAPI?.getSettings().then(setSettings);
+
+    // Check context menu registration status
+    window.electronAPI
+      ?.checkContextMenuRegistered?.()
+      .then((registered) => {
+        setContextMenuRegistered(registered);
+        setContextMenuLoading(false);
+      })
+      .catch(() => setContextMenuLoading(false));
   }, []);
 
   const handleChange = async (key: keyof AppSettings, value: any) => {
@@ -24,6 +35,26 @@ export const SettingsView: React.FC = () => {
     if (path) {
       setSettings({ ...settings, exportPath: path });
     }
+  };
+
+  const handleContextMenuToggle = async () => {
+    setContextMenuLoading(true);
+    try {
+      if (contextMenuRegistered) {
+        const result = await window.electronAPI?.unregisterContextMenu?.();
+        if (result?.success) {
+          setContextMenuRegistered(false);
+        }
+      } else {
+        const result = await window.electronAPI?.registerContextMenu?.();
+        if (result?.success) {
+          setContextMenuRegistered(true);
+        }
+      }
+    } catch (err) {
+      console.error("Context menu toggle failed:", err);
+    }
+    setContextMenuLoading(false);
   };
 
   const handleClose = () => {
@@ -65,15 +96,6 @@ export const SettingsView: React.FC = () => {
               <input type="text" value={settings.filePrefix} onChange={(e) => handleChange("filePrefix", e.target.value)} className="input-field w-full" placeholder="annotation" />
               <p className="text-xs text-zinc-500 mt-1">Files will be named: {settings.filePrefix}_YYYYMMDD_HHmmss_001.png</p>
             </div>
-
-            {/* Image Format */}
-            <div>
-              <label className="settings-label">Image Format</label>
-              <select value={settings.imageFormat} onChange={(e) => handleChange("imageFormat", e.target.value)} className="input-field w-full">
-                <option value="png">PNG (Transparent)</option>
-                <option value="webp">WebP (Smaller size)</option>
-              </select>
-            </div>
           </div>
         </section>
 
@@ -82,6 +104,22 @@ export const SettingsView: React.FC = () => {
           <h2 className="text-sm font-semibold text-zinc-300 mb-4 uppercase tracking-wider">Behavior</h2>
 
           <div className="space-y-3">
+            {/* Context Menu Integration */}
+            <div className="settings-row">
+              <div>
+                <p className="text-sm text-white">Right-Click Menu</p>
+                <p className="text-xs text-zinc-500">Add "Annotate with Video Annotator" to image context menu</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" checked={contextMenuRegistered} onChange={handleContextMenuToggle} disabled={contextMenuLoading} className="sr-only peer" />
+                <div
+                  className={`w-11 h-6 bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent-primary ${
+                    contextMenuLoading ? "opacity-50" : ""
+                  }`}
+                ></div>
+              </label>
+            </div>
+
             {/* Show Drag Widget */}
             <div className="settings-row">
               <div>

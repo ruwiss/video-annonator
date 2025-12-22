@@ -3,10 +3,13 @@ import { fabric } from "fabric";
 import { useToolStore } from "../stores/useToolStore";
 import { useCanvasStore } from "../stores/useCanvasStore";
 import { MARKER_PRESETS, ARROW_PRESETS, LINE_PRESETS } from "../shared/presets";
+import { ImageModeState, ScreenCaptureState } from "../../shared/types";
 
 interface AnnotationCanvasProps {
   width: number;
   height: number;
+  imageMode?: ImageModeState;
+  screenCapture?: ScreenCaptureState;
 }
 
 // Module-level state for overlays
@@ -28,13 +31,76 @@ const overlayState: OverlayState = {
 
 // Export for external access (save, etc.)
 export const getOverlayState = () => overlayState;
-export const resetOverlayState = () => {
+export const resetOverlayState = (canvas?: fabric.Canvas) => {
+  // Remove crop overlay from canvas if provided
+  if (canvas && overlayState.cropOverlay) {
+    canvas.remove(overlayState.cropOverlay);
+    canvas.renderAll();
+  }
   overlayState.spotlightHoles = [];
   overlayState.spotlightOverlay = null;
   overlayState.cropOverlay = null;
   overlayState.hasCrop = false;
   overlayState.cropBounds = null;
 };
+
+// Sync crop state from canvas after undo/redo
+export const syncCropStateFromCanvas = (canvas: fabric.Canvas) => {
+  // Find crop overlay in canvas objects
+  const cropObj = canvas.getObjects().find((obj) => obj.data?.type === "crop-overlay");
+  if (cropObj) {
+    overlayState.cropOverlay = cropObj as fabric.Group;
+    overlayState.hasCrop = true;
+    // Extract bounds from the crop overlay
+    const bounds = (canvas as any).cropBounds;
+    if (bounds) {
+      overlayState.cropBounds = bounds;
+    }
+  } else {
+    overlayState.cropOverlay = null;
+    overlayState.hasCrop = false;
+    overlayState.cropBounds = null;
+  }
+};
+
+// Store references for blur update functionality
+let moduleCanvasRef: fabric.Canvas | null = null;
+let imageModeRef: ImageModeState | undefined;
+let screenCaptureRef: ScreenCaptureState | undefined;
+let saveHistoryRef: (() => void) | null = null;
+
+// Update blur object with new settings (called from ToolPanel)
+export const updateSelectedBlur = async (newStyle: string, newIntensity: number): Promise<boolean> => {
+  if (!moduleCanvasRef) return false;
+
+  const activeObj = moduleCanvasRef.getActiveObject();
+  if (!activeObj || activeObj.data?.type !== "blur") return false;
+
+  // Get current position and size
+  const left = activeObj.left || 0;
+  const top = activeObj.top || 0;
+  const width = (activeObj as any).width * (activeObj.scaleX || 1);
+  const height = (activeObj as any).height * (activeObj.scaleY || 1);
+
+  // Remove old blur object
+  moduleCanvasRef.remove(activeObj);
+
+  // Create new blur with updated settings
+  const newBlur = await createBlurRectExport(left, top, width, height, newStyle, newIntensity, imageModeRef, screenCaptureRef);
+  moduleCanvasRef.add(newBlur);
+  moduleCanvasRef.setActiveObject(newBlur);
+  moduleCanvasRef.renderAll();
+
+  // Save history
+  if (saveHistoryRef) saveHistoryRef();
+
+  return true;
+};
+
+// Internal blur creation function (exported for updateSelectedBlur)
+async function createBlurRectExport(x: number, y: number, w: number, h: number, style: string, intensity: number, imageMode?: ImageModeState, screenCapture?: ScreenCaptureState): Promise<fabric.Object> {
+  return createBlurRect(x, y, w, h, style, intensity, imageMode, screenCapture);
+}
 
 // Sync spotlight state from history - call after loadFromJSON
 export const syncSpotlightFromHistory = (canvas: fabric.Canvas, holeCount: number, holesData?: any[], color: string = "#000000", darkness: number = 0.7) => {
@@ -120,7 +186,7 @@ export const updateSpotlightDarkness = (canvas: fabric.Canvas | null, canvasWidt
   updateSpotlightOverlay(canvas, canvasWidth, canvasHeight, darknessLevel, color);
 };
 
-export const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({ width, height }) => {
+export const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({ width, height, imageMode, screenCapture }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fabricRef = useRef<fabric.Canvas | null>(null);
   const isDrawingRef = useRef(false);
@@ -147,6 +213,9 @@ export const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({ width, heigh
     canvas.freeDrawingBrush.decimate = 8;
     fabricRef.current = canvas;
     setCanvas(canvas);
+
+    // Update module-level refs for blur update functionality
+    moduleCanvasRef = canvas;
 
     // Reset overlay state
     resetOverlayState();
@@ -229,6 +298,13 @@ export const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({ width, heigh
     (json as any).spotlightDarkness = config.spotlightDarkness;
     pushHistory(JSON.stringify(json));
   }, [pushHistory, config.spotlightColor, config.spotlightDarkness]);
+
+  // Update module-level refs for blur update functionality
+  useEffect(() => {
+    imageModeRef = imageMode;
+    screenCaptureRef = screenCapture;
+    saveHistoryRef = saveHistory;
+  }, [imageMode, screenCapture, saveHistory]);
 
   // Update tool mode
   useEffect(() => {
@@ -618,7 +694,7 @@ export const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({ width, heigh
         canvas.remove(obj);
 
         if ((rect.width || 0) > 10 && (rect.height || 0) > 10) {
-          const blurRect = await createBlurRect(rect.left || 0, rect.top || 0, rect.width || 0, rect.height || 0, config.blurStyle, config.blurIntensity);
+          const blurRect = await createBlurRect(rect.left || 0, rect.top || 0, rect.width || 0, rect.height || 0, config.blurStyle, config.blurIntensity, imageMode, screenCapture);
           canvas.add(blurRect);
           saveHistory();
         }
@@ -975,41 +1051,56 @@ function updateSpotlightOverlay(canvas: fabric.Canvas, w: number, h: number, dar
 }
 
 // Create blur rectangle with real blur effect
-async function createBlurRect(x: number, y: number, w: number, h: number, style: string, intensity: number): Promise<fabric.Object> {
-  // Always try to capture the region for real effect
-  if (window.electronAPI?.captureRegion) {
+// In image mode or screen capture mode, extract region from the background instead of live capture
+async function createBlurRect(x: number, y: number, w: number, h: number, style: string, intensity: number, imageMode?: ImageModeState, screenCapture?: ScreenCaptureState): Promise<fabric.Object> {
+  // IMAGE MODE: Extract region from the background image (with contain scaling)
+  if (imageMode?.isImageMode && imageMode.imageDataUrl) {
     try {
-      const regionDataUrl = await window.electronAPI.captureRegion(x, y, w, h);
+      const screenW = window.innerWidth;
+      const screenH = window.innerHeight;
+      const origW = imageMode.imageWidth;
+      const origH = imageMode.imageHeight;
+
+      // Calculate contain scale and offset (same as CSS background-size: contain)
+      const scaleToFit = Math.min(screenW / origW, screenH / origH);
+      const displayW = origW * scaleToFit;
+      const displayH = origH * scaleToFit;
+      const offsetX = (screenW - displayW) / 2;
+      const offsetY = (screenH - displayH) / 2;
+
+      // Convert screen coordinates to image coordinates
+      const imgX = (x - offsetX) / scaleToFit;
+      const imgY = (y - offsetY) / scaleToFit;
+      const imgW = w / scaleToFit;
+      const imgH = h / scaleToFit;
+
+      // Extract region from image using canvas
+      const regionDataUrl = await extractImageRegion(imageMode.imageDataUrl, imgX, imgY, imgW, imgH);
+
       if (regionDataUrl) {
-        let processedDataUrl: string;
-
-        if (style === "blur") {
-          // Apply gaussian blur
-          processedDataUrl = await applyCanvasBlur(regionDataUrl, intensity);
-        } else if (style === "pixelate") {
-          // Apply pixelation
-          processedDataUrl = await applyPixelation(regionDataUrl, intensity);
-        } else {
-          // Mosaic - pixelate with color variation
-          processedDataUrl = await applyMosaic(regionDataUrl, intensity);
-        }
-
-        return new Promise((resolve) => {
-          fabric.Image.fromURL(processedDataUrl, (img) => {
-            img.set({
-              left: x,
-              top: y,
-              selectable: true,
-              evented: true,
-              data: { type: "blur", style },
-            });
-            img.scaleToWidth(w);
-            resolve(img);
-          });
-        });
+        const processedDataUrl = await applyBlurEffect(regionDataUrl, style, intensity);
+        return createBlurImage(processedDataUrl, x, y, w, style, intensity);
       }
     } catch (error) {
-      console.error("Blur capture failed:", error);
+      console.error("Image mode blur failed:", error);
+    }
+  }
+
+  // SCREEN CAPTURE MODE: Extract region from pre-captured background (instant, no IPC)
+  if (screenCapture?.hasCapture && screenCapture.captureDataUrl) {
+    try {
+      // Screen capture is at physical pixel size, need to account for DPI
+      const dpr = window.devicePixelRatio || 1;
+
+      // Extract region directly from pre-captured image
+      const regionDataUrl = await extractImageRegion(screenCapture.captureDataUrl, x * dpr, y * dpr, w * dpr, h * dpr);
+
+      if (regionDataUrl) {
+        const processedDataUrl = await applyBlurEffect(regionDataUrl, style, intensity);
+        return createBlurImage(processedDataUrl, x, y, w, style, intensity);
+      }
+    } catch (error) {
+      console.error("Screen capture blur failed:", error);
     }
   }
 
@@ -1024,7 +1115,64 @@ async function createBlurRect(x: number, y: number, w: number, h: number, style:
     evented: true,
     rx: 4,
     ry: 4,
-    data: { type: "blur", style },
+    data: { type: "blur", blurStyle: style, blurIntensity: intensity },
+  });
+}
+
+// Helper: Apply blur effect based on style (gaussian or mosaic only)
+async function applyBlurEffect(dataUrl: string, style: string, intensity: number): Promise<string> {
+  if (style === "gaussian") {
+    return applyCanvasBlur(dataUrl, intensity);
+  } else {
+    // mosaic
+    return applyMosaic(dataUrl, intensity);
+  }
+}
+
+// Helper: Create blur image fabric object with stored settings
+function createBlurImage(dataUrl: string, x: number, y: number, w: number, style: string, intensity: number): Promise<fabric.Object> {
+  return new Promise((resolve) => {
+    fabric.Image.fromURL(dataUrl, (img) => {
+      img.set({
+        left: x,
+        top: y,
+        selectable: true,
+        evented: true,
+        data: { type: "blur", blurStyle: style, blurIntensity: intensity },
+      });
+      img.scaleToWidth(w);
+      resolve(img);
+    });
+  });
+}
+
+// Extract a region from an image data URL
+async function extractImageRegion(imageDataUrl: string, x: number, y: number, w: number, h: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      // Clamp coordinates to image bounds
+      const clampedX = Math.max(0, Math.min(x, img.width));
+      const clampedY = Math.max(0, Math.min(y, img.height));
+      const clampedW = Math.min(w, img.width - clampedX);
+      const clampedH = Math.min(h, img.height - clampedY);
+
+      if (clampedW <= 0 || clampedH <= 0) {
+        reject(new Error("Region outside image bounds"));
+        return;
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = clampedW;
+      canvas.height = clampedH;
+      const ctx = canvas.getContext("2d")!;
+
+      ctx.drawImage(img, clampedX, clampedY, clampedW, clampedH, 0, 0, clampedW, clampedH);
+
+      resolve(canvas.toDataURL());
+    };
+    img.onerror = () => reject(new Error("Failed to load image"));
+    img.src = imageDataUrl;
   });
 }
 
@@ -1051,40 +1199,7 @@ async function applyCanvasBlur(dataUrl: string, intensity: number): Promise<stri
   });
 }
 
-// Apply pixelation effect
-async function applyPixelation(dataUrl: string, blockSize: number): Promise<string> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext("2d")!;
-
-      // Draw small then scale up for pixelation
-      const smallW = Math.ceil(img.width / blockSize);
-      const smallH = Math.ceil(img.height / blockSize);
-
-      // Create small canvas
-      const smallCanvas = document.createElement("canvas");
-      smallCanvas.width = smallW;
-      smallCanvas.height = smallH;
-      const smallCtx = smallCanvas.getContext("2d")!;
-
-      // Draw image small
-      smallCtx.drawImage(img, 0, 0, smallW, smallH);
-
-      // Scale up with nearest neighbor (pixelated)
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(smallCanvas, 0, 0, smallW, smallH, 0, 0, img.width, img.height);
-
-      resolve(canvas.toDataURL());
-    };
-    img.src = dataUrl;
-  });
-}
-
-// Apply mosaic effect (pixelate with slight color shift)
+// Apply mosaic effect (pixelate with averaged color blocks)
 async function applyMosaic(dataUrl: string, blockSize: number): Promise<string> {
   return new Promise((resolve) => {
     const img = new Image();

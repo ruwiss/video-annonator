@@ -3,8 +3,9 @@ import { fabric } from "fabric";
 import { useToolStore, getPanelPosition, savePanelPosition } from "../stores/useToolStore";
 import { useCanvasStore } from "../stores/useCanvasStore";
 import { ToolType, UserTextPreset } from "../shared/types";
-import { ARROW_PRESETS, LINE_PRESETS, MARKER_PRESETS, BLUR_PRESETS } from "../shared/presets";
+import { ARROW_PRESETS, LINE_PRESETS, MARKER_PRESETS, BLUR_TYPES, DEFAULT_BLUR_INTENSITY, MIN_BLUR_INTENSITY, MAX_BLUR_INTENSITY } from "../shared/presets";
 import { ANNOTATION_COLORS } from "../shared/constants";
+import { resetOverlayState, getOverlayState, updateSelectedBlur } from "./AnnotationCanvas";
 import { CursorIcon, ArrowIcon, RectangleIcon, EllipseIcon, LineIcon, PencilIcon, TextIcon, SpotlightIcon, BlurIcon, MarkerIcon, NumberingIcon } from "./icons";
 
 const TEXT_PRESETS_KEY = "video-annotator-text-presets";
@@ -57,10 +58,17 @@ export const ToolPanel: React.FC<{ className?: string }> = ({ className }) => {
   const fontInputRef = useRef<HTMLInputElement>(null);
   const fontListRef = useRef<HTMLDivElement>(null);
 
-  // Draggable
+  // Draggable - initialize with saved position immediately
   const [position, setPosition] = useState(() => getPanelPosition() || { x: 16, y: (typeof window !== "undefined" ? window.innerHeight : 600) / 2 - 250 });
   const [isDragging, setIsDragging] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
   const dragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number } | null>(null);
+
+  // Show panel after mount to prevent position jump
+  useEffect(() => {
+    const timer = setTimeout(() => setIsVisible(true), 50);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Load fonts
   useEffect(() => {
@@ -81,10 +89,21 @@ export const ToolPanel: React.FC<{ className?: string }> = ({ className }) => {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // Selection listener
+  // Selection listener - also load blur settings when blur object is selected
   useEffect(() => {
     if (!canvas) return;
-    const onSelect = () => setSelectedObjectType(canvas.getActiveObject()?.data?.type || null);
+    const onSelect = () => {
+      const obj = canvas.getActiveObject();
+      const type = obj?.data?.type || null;
+      setSelectedObjectType(type);
+
+      // Load blur settings from selected blur object
+      if (type === "blur" && obj?.data) {
+        const blurStyle = obj.data.blurStyle || config.blurStyle;
+        const blurIntensity = obj.data.blurIntensity || config.blurIntensity;
+        setConfig({ blurStyle, blurIntensity });
+      }
+    };
     const onClear = () => setSelectedObjectType(null);
     canvas.on("selection:created", onSelect);
     canvas.on("selection:updated", onSelect);
@@ -94,7 +113,7 @@ export const ToolPanel: React.FC<{ className?: string }> = ({ className }) => {
       canvas.off("selection:updated", onSelect);
       canvas.off("selection:cleared", onClear);
     };
-  }, [canvas]);
+  }, [canvas, config.blurStyle, config.blurIntensity, setConfig]);
 
   // Drag handlers
   const handleDragStart = useCallback(
@@ -232,7 +251,15 @@ export const ToolPanel: React.FC<{ className?: string }> = ({ className }) => {
   );
 
   return (
-    <div className={`fixed z-40 flex ${className ?? ""}`} style={{ left: position.x, top: position.y }}>
+    <div
+      className={`fixed z-40 flex ${className ?? ""}`}
+      style={{
+        left: position.x,
+        top: position.y,
+        opacity: isVisible ? 1 : 0,
+        transition: "opacity 0.15s ease-out",
+      }}
+    >
       {/* Main Tool Panel */}
       <div ref={mainPanelRef} className="flex flex-col bg-zinc-900/95 backdrop-blur-xl border border-zinc-700/50 rounded-2xl shadow-2xl overflow-hidden">
         <div className="h-6 flex items-center justify-center cursor-grab active:cursor-grabbing bg-zinc-800/50 border-b border-zinc-700/50" onMouseDown={handleDragStart}>
@@ -283,6 +310,32 @@ export const ToolPanel: React.FC<{ className?: string }> = ({ className }) => {
                           }}
                         />
                       ))}
+                      {/* Custom color picker - always shows rainbow, click to pick any color */}
+                      <div className="relative w-6 h-6 group">
+                        <input
+                          type="color"
+                          value={config.strokeColor.startsWith("#") ? config.strokeColor : "#ffffff"}
+                          onChange={(e) => {
+                            const c = e.target.value;
+                            setConfig({ strokeColor: c });
+                            if (selectedObjectType === "text") applyToSelected({ fill: c });
+                            else if (selectedObjectType) applyToSelected({ stroke: c, fill: config.filled ? c : "transparent" });
+                          }}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                        />
+                        <div
+                          className="w-6 h-6 rounded-md border border-zinc-600 flex items-center justify-center transition-all group-hover:scale-105"
+                          style={{
+                            background: "conic-gradient(from 0deg, #ef4444, #f59e0b, #22c55e, #3b82f6, #8b5cf6, #ec4899, #ef4444)",
+                          }}
+                        >
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" className="drop-shadow">
+                            <path d="M12 5v14M5 12h14" strokeLinecap="round" />
+                          </svg>
+                        </div>
+                        {/* Custom color indicator - small dot when custom color is active */}
+                        {!ANNOTATION_COLORS.includes(config.strokeColor as any) && <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-zinc-900 shadow-sm" style={{ backgroundColor: config.strokeColor }} />}
+                      </div>
                     </div>
                   </Section>
                 )}
@@ -424,19 +477,48 @@ export const ToolPanel: React.FC<{ className?: string }> = ({ className }) => {
                   </>
                 )}
 
-                {/* Blur */}
+                {/* Blur - Simplified: Type + Intensity */}
                 {showOptions.blur && (
-                  <Section title="Style">
-                    {BLUR_PRESETS.map((p) => (
-                      <button
-                        key={p.id}
-                        className={`w-full px-2 py-1.5 rounded-lg text-left text-xs transition-colors ${config.blurStyle === p.type && config.blurIntensity === p.intensity ? "bg-blue-500/20 text-blue-400" : "hover:bg-zinc-800 text-zinc-300"}`}
-                        onClick={() => setConfig({ blurStyle: p.type, blurIntensity: p.intensity })}
-                      >
-                        {p.name}
-                      </button>
-                    ))}
-                  </Section>
+                  <>
+                    <Section title="Type">
+                      <div className="flex gap-1">
+                        {BLUR_TYPES.map((b) => (
+                          <button
+                            key={b.id}
+                            className={`flex-1 py-1.5 rounded-lg text-[11px] flex items-center justify-center gap-1 transition-colors ${config.blurStyle === b.type ? "bg-blue-500 text-white" : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"}`}
+                            onClick={async () => {
+                              setConfig({ blurStyle: b.type });
+                              if (selectedObjectType === "blur") {
+                                await updateSelectedBlur(b.type, config.blurIntensity);
+                              }
+                            }}
+                          >
+                            <span>{b.icon}</span>
+                            <span>{b.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </Section>
+                    <Section title={`Intensity ${config.blurIntensity}`}>
+                      <input
+                        type="range"
+                        min={MIN_BLUR_INTENSITY}
+                        max={MAX_BLUR_INTENSITY}
+                        value={config.blurIntensity}
+                        onChange={(e) => setConfig({ blurIntensity: +e.target.value })}
+                        onMouseUp={async () => {
+                          if (selectedObjectType === "blur") {
+                            await updateSelectedBlur(config.blurStyle, config.blurIntensity);
+                          }
+                        }}
+                        className="w-full accent-blue-500 h-1"
+                      />
+                      <div className="flex justify-between text-[9px] text-zinc-500 mt-1">
+                        <span>Light</span>
+                        <span>Heavy</span>
+                      </div>
+                    </Section>
+                  </>
                 )}
 
                 {/* Text Options */}
@@ -845,7 +927,7 @@ function getOptionsToShow(tool: ToolType, selectedType: string | null) {
       return { ...base, show: true, color: true, text: true };
   }
 
-  // Selection mode (except arrow)
+  // Selection mode - show options based on selected object type
   if (tool === "select" && selectedType) {
     switch (selectedType) {
       case "arrow":
@@ -860,6 +942,9 @@ function getOptionsToShow(tool: ToolType, selectedType: string | null) {
         return { ...base, show: true, color: true, text: true };
       case "freehand":
         return { ...base, show: true, color: true, strokeWidth: true };
+      case "blur":
+        // Show blur editing options when blur object is selected
+        return { ...base, show: true, blur: true };
       case "marker":
       case "numbering":
         return { ...base, show: true, color: true };

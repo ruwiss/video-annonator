@@ -90,6 +90,11 @@ const api = {
     return ipcRenderer.invoke('copy-to-clipboard', text);
   },
 
+  // Open external link in browser
+  openExternalLink: (url: string): Promise<boolean> => {
+    return ipcRenderer.invoke('open-external-link', url);
+  },
+
   // Region
   selectRegion: () =>
     ipcRenderer.invoke(IPC_CHANNELS.SELECT_REGION),
@@ -104,8 +109,8 @@ const api = {
     ipcRenderer.send(IPC_CHANNELS.REGION_SELECTED, region),
 
   // Export
-  saveAnnotation: (dataUrl: string): Promise<string> =>
-    ipcRenderer.invoke(IPC_CHANNELS.SAVE_ANNOTATION, dataUrl),
+  saveAnnotation: (dataUrl: string, overwritePath?: string): Promise<string> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SAVE_ANNOTATION, dataUrl, overwritePath),
 
   onAnnotationSaved: (callback: (filePath: string) => void) => {
     const handler = (_: unknown, filePath: string) => callback(filePath);
@@ -142,6 +147,36 @@ const api = {
 
   // Check if this is a fresh app start
   checkFreshStart: (): Promise<boolean> => ipcRenderer.invoke('check-fresh-start'),
+
+  // Image mode - when opened with an image file
+  getImageModeState: (): Promise<{ isImageMode: boolean; imagePath: string | null; imageDataUrl: string | null; imageWidth: number; imageHeight: number }> =>
+    ipcRenderer.invoke('get-image-mode-state'),
+
+  clearImageMode: () => ipcRenderer.send('clear-image-mode'),
+
+  // Listen for image mode updates (when second instance opens with image)
+  onImageModeUpdate: (callback: (data: { isImageMode: boolean; imagePath: string | null; imageDataUrl: string | null; imageWidth: number; imageHeight: number }) => void) => {
+    const handler = (_: unknown, data: { isImageMode: boolean; imagePath: string | null; imageDataUrl: string | null; imageWidth: number; imageHeight: number }) => callback(data);
+    ipcRenderer.on('image-mode-update', handler);
+    return () => ipcRenderer.removeListener('image-mode-update', handler);
+  },
+
+  // Listen for pre-captured screen data (normal mode)
+  onScreenCaptureUpdate: (callback: (data: { hasCapture: boolean; captureDataUrl: string | null; captureWidth: number; captureHeight: number; bounds: { x: number; y: number; width: number; height: number } | null }) => void) => {
+    const handler = (_: unknown, data: { hasCapture: boolean; captureDataUrl: string | null; captureWidth: number; captureHeight: number; bounds: { x: number; y: number; width: number; height: number } | null }) => callback(data);
+    ipcRenderer.on('screen-capture-update', handler);
+    return () => ipcRenderer.removeListener('screen-capture-update', handler);
+  },
+
+  // Context menu registration
+  checkContextMenuRegistered: (): Promise<boolean> =>
+    ipcRenderer.invoke('check-context-menu-registered'),
+
+  registerContextMenu: (): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('register-context-menu'),
+
+  unregisterContextMenu: (): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('unregister-context-menu'),
 };
 
 // ============================================

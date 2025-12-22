@@ -56,10 +56,38 @@
                     "arch": [
                         "x64"
                     ]
+                },
+                {
+                    "target": "nsis",
+                    "arch": [
+                        "x64"
+                    ]
                 }
             ],
             "icon": "assets/icon.png"
         },
+        "nsis": {
+            "oneClick": false,
+            "allowToChangeInstallationDirectory": true,
+            "createDesktopShortcut": true,
+            "createStartMenuShortcut": true
+        },
+        "fileAssociations": [
+            {
+                "ext": [
+                    "png",
+                    "jpg",
+                    "jpeg",
+                    "webp",
+                    "bmp",
+                    "gif"
+                ],
+                "name": "Image File",
+                "description": "Open with Video Annotator",
+                "role": "Editor",
+                "icon": "assets/icon.ico"
+            }
+        ],
         "portable": {
             "artifactName": "${productName}.exe"
         },

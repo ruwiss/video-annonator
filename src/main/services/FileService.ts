@@ -17,7 +17,21 @@ export class FileService {
     this.sessionCounter = settings.numberingStart;
   }
 
-  async saveAnnotation(dataUrl: string): Promise<string> {
+  async saveAnnotation(dataUrl: string, overwritePath?: string): Promise<string> {
+    // Image mode: overwrite the original file
+    if (overwritePath) {
+      try {
+        const base64Data = dataUrl.replace(/^data:image\/\w+;base64,/, '');
+        const buffer = Buffer.from(base64Data, 'base64');
+        await fs.promises.writeFile(overwritePath, buffer);
+        return overwritePath;
+      } catch (err) {
+        console.error('[FileService] Failed to overwrite file:', err);
+        // Fallback to normal save if overwrite fails
+      }
+    }
+
+    // Normal mode: save to export path with generated filename
     const settings = this.store.get('settings');
 
     // Ensure export directory exists

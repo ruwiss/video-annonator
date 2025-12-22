@@ -206,3 +206,27 @@ export interface AnnotationSession {
   createdAt: number;
   exportedFiles: string[];
 }
+
+// ============================================
+// IMAGE MODE TYPES
+// ============================================
+
+export interface ImageModeState {
+  isImageMode: boolean;
+  imagePath: string | null;
+  imageDataUrl: string | null;
+  imageWidth: number;
+  imageHeight: number;
+}
+
+// ============================================
+// SCREEN CAPTURE STATE (Pre-captured background)
+// ============================================
+
+export interface ScreenCaptureState {
+  hasCapture: boolean;
+  captureDataUrl: string | null;
+  captureWidth: number;
+  captureHeight: number;
+  bounds: Bounds | null;
+}

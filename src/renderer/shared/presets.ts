@@ -64,20 +64,24 @@ export const MARKER_PRESETS: MarkerPreset[] = [
 ];
 
 // ============================================
-// BLUR STYLES
+// BLUR STYLES - Simplified: Gaussian & Mosaic only
 // ============================================
+
+export type BlurType = 'gaussian' | 'mosaic';
 
 export interface BlurPreset {
   id: string;
   name: string;
-  type: 'blur' | 'pixelate' | 'mosaic';
-  intensity: number;
+  type: BlurType;
+  icon: string;
 }
 
-export const BLUR_PRESETS: BlurPreset[] = [
-  { id: 'blur-light', name: 'Light Blur', type: 'blur', intensity: 5 },
-  { id: 'blur-heavy', name: 'Heavy Blur', type: 'blur', intensity: 15 },
-  { id: 'pixelate-small', name: 'Pixelate S', type: 'pixelate', intensity: 8 },
-  { id: 'pixelate-large', name: 'Pixelate L', type: 'pixelate', intensity: 16 },
-  { id: 'mosaic', name: 'Mosaic', type: 'mosaic', intensity: 12 },
+export const BLUR_TYPES: BlurPreset[] = [
+  { id: 'gaussian', name: 'Gaussian', type: 'gaussian', icon: '◐' },
+  { id: 'mosaic', name: 'Mosaic', type: 'mosaic', icon: '▦' },
 ];
+
+// Default blur settings
+export const DEFAULT_BLUR_INTENSITY = 10;
+export const MIN_BLUR_INTENSITY = 3;
+export const MAX_BLUR_INTENSITY = 30;

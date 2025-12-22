@@ -9,21 +9,20 @@ interface SaveDialogProps {
 
 export interface SaveOptions {
   includeBackground: boolean;
-  format: "png" | "webp";
+  format: "png";
   quality: number;
 }
 
 export const SaveDialog: React.FC<SaveDialogProps> = ({ isOpen, onClose, onSave }) => {
   const [includeBackground, setIncludeBackground] = useState(false);
-  const [format, setFormat] = useState<"png" | "webp">("png");
 
   if (!isOpen) return null;
 
   const handleSave = () => {
     onSave({
       includeBackground,
-      format,
-      quality: format === "webp" ? 0.9 : 1,
+      format: "png",
+      quality: 1,
     });
     onClose();
   };
@@ -60,20 +59,6 @@ export const SaveDialog: React.FC<SaveDialogProps> = ({ isOpen, onClose, onSave 
                 <span className={`text-sm ${includeBackground ? "text-blue-400" : "text-zinc-400"}`}>With Background</span>
               </button>
             </div>
-          </div>
-
-          {/* Format Option */}
-          <div className="space-y-3">
-            <label className="text-sm font-medium text-zinc-300">Format</label>
-            <div className="flex gap-2">
-              <button onClick={() => setFormat("png")} className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${format === "png" ? "bg-blue-500 text-white" : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"}`}>
-                PNG
-              </button>
-              <button onClick={() => setFormat("webp")} className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${format === "webp" ? "bg-blue-500 text-white" : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"}`}>
-                WebP
-              </button>
-            </div>
-            <p className="text-xs text-zinc-500">{format === "png" ? "Best for transparency, larger file size" : "Smaller file size, good quality"}</p>
           </div>
         </div>
 

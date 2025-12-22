@@ -2,6 +2,7 @@
 // COLOR PALETTES
 // ============================================
 
+// 15 preset colors + 1 slot for custom color picker in UI
 export const ANNOTATION_COLORS = [
   '#ef4444', // Red
   '#f97316', // Orange
@@ -15,7 +16,6 @@ export const ANNOTATION_COLORS = [
   '#6366f1', // Indigo
   '#8b5cf6', // Violet
   '#a855f7', // Purple
-  '#d946ef', // Fuchsia
   '#ec4899', // Pink
   '#ffffff', // White
   '#000000', // Black

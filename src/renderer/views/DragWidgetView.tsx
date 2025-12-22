@@ -12,7 +12,7 @@ export const DragWidgetView: React.FC = () => {
       setFilePath(decodeURIComponent(file));
     }
 
-    // ESC to close
+    // ESC to close (hidden feature, no UI hint needed)
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         window.electronAPI?.hideDragWidget();
@@ -35,13 +35,14 @@ export const DragWidgetView: React.FC = () => {
 
   return (
     <div className="w-[120px] h-[120px] relative select-none">
-      {/* Hot corner curved shape */}
+      {/* Modern glassmorphism corner widget */}
       <div
-        className={`absolute top-0 right-0 w-[100px] h-[100px] cursor-grab active:cursor-grabbing transition-all duration-200 ${isDragging ? "scale-95 opacity-80" : ""} ${isHovered ? "scale-105" : ""}`}
+        className={`absolute top-0 right-0 w-[90px] h-[90px] cursor-grab active:cursor-grabbing transition-all duration-300 ${isDragging ? "scale-90 opacity-60" : ""} ${isHovered ? "scale-105" : ""}`}
         style={{
-          background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
-          borderRadius: "0 0 0 100px",
-          boxShadow: isHovered ? "0 8px 32px rgba(59, 130, 246, 0.4)" : "0 4px 16px rgba(0, 0, 0, 0.3)",
+          background: isHovered ? "linear-gradient(135deg, rgba(99, 102, 241, 0.95) 0%, rgba(79, 70, 229, 0.95) 100%)" : "linear-gradient(135deg, rgba(99, 102, 241, 0.85) 0%, rgba(79, 70, 229, 0.85) 100%)",
+          borderRadius: "0 0 0 90px",
+          boxShadow: isHovered ? "0 12px 40px rgba(99, 102, 241, 0.5), inset 0 1px 0 rgba(255,255,255,0.2)" : "0 8px 24px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.1)",
+          backdropFilter: "blur(8px)",
         }}
         draggable
         onDragStart={handleDragStart}
@@ -49,26 +50,16 @@ export const DragWidgetView: React.FC = () => {
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        {/* Content */}
-        <div className="absolute top-3 right-3 flex flex-col items-center">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" className="mb-1 drop-shadow-lg">
-            <rect x="3" y="3" width="18" height="18" rx="2" />
-            <circle cx="8.5" cy="8.5" r="1.5" fill="white" stroke="none" />
-            <path d="M21 15l-5-5L5 21" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          <span className="text-[9px] text-white/90 font-medium tracking-wide">DRAG</span>
+        {/* Subtle drag indicator - 6 dots grid */}
+        <div className="absolute top-4 right-4 grid grid-cols-2 gap-1 opacity-70">
+          <div className="w-1.5 h-1.5 rounded-full bg-white/80" />
+          <div className="w-1.5 h-1.5 rounded-full bg-white/80" />
+          <div className="w-1.5 h-1.5 rounded-full bg-white/80" />
+          <div className="w-1.5 h-1.5 rounded-full bg-white/80" />
+          <div className="w-1.5 h-1.5 rounded-full bg-white/80" />
+          <div className="w-1.5 h-1.5 rounded-full bg-white/80" />
         </div>
-
-        {/* ESC hint */}
-        <div className="absolute bottom-4 left-4 text-[8px] text-white/60 font-medium">ESC</div>
       </div>
-
-      {/* Drag feedback */}
-      {isDragging && (
-        <div className="absolute top-0 right-0 w-[100px] h-[100px] flex items-center justify-center" style={{ borderRadius: "0 0 0 100px" }}>
-          <div className="absolute top-4 right-4 text-white text-xs font-medium animate-pulse">Drop it!</div>
-        </div>
-      )}
     </div>
   );
 };

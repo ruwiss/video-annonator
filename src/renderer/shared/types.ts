@@ -58,7 +58,7 @@ export interface ToolConfig {
   spotlightColor: string;
   spotlightShape: 'circle' | 'rounded' | 'rectangle';
   blurIntensity: number;
-  blurStyle: 'blur' | 'pixelate' | 'mosaic';
+  blurStyle: 'gaussian' | 'mosaic';
   arrowHeadSize: number;
   arrowStyle: 'simple' | 'filled' | 'double' | 'curved';
   textShadow: boolean;
@@ -90,7 +90,7 @@ export const DEFAULT_TOOL_CONFIG: ToolConfig = {
   spotlightColor: '#000000',
   spotlightShape: 'circle',
   blurIntensity: 10,
-  blurStyle: 'pixelate',
+  blurStyle: 'gaussian',
   arrowHeadSize: 15,
   arrowStyle: 'simple',
   textShadow: false,
