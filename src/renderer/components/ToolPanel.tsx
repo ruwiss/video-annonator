@@ -261,16 +261,16 @@ export const ToolPanel: React.FC<{ className?: string }> = ({ className }) => {
       }}
     >
       {/* Main Tool Panel */}
-      <div ref={mainPanelRef} className="flex flex-col bg-zinc-900/95 backdrop-blur-xl border border-zinc-700/50 rounded-2xl shadow-2xl overflow-hidden">
-        <div className="h-6 flex items-center justify-center cursor-grab active:cursor-grabbing bg-zinc-800/50 border-b border-zinc-700/50" onMouseDown={handleDragStart}>
-          <div className="w-8 h-1 rounded-full bg-zinc-600" />
+      <div ref={mainPanelRef} className="tool-panel overflow-hidden">
+        <div className="h-7 flex items-center justify-center cursor-grab active:cursor-grabbing border-b border-cinema-border" onMouseDown={handleDragStart}>
+          <div className="w-10 h-1 rounded-full bg-gradient-to-r from-transparent via-amber-glow/30 to-transparent" />
         </div>
         <div className="flex flex-col gap-0.5 p-1.5">
           {TOOLS.map(({ type, icon: Icon, label, shortcut }) => (
             <button key={type} className={`tool-btn group relative ${activeTool === type ? "active" : ""}`} onClick={() => setActiveTool(type)} title={`${label} (${shortcut})`}>
               <Icon size={18} />
-              <div className="absolute left-full ml-3 px-2 py-1 bg-zinc-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 shadow-lg">
-                {label} <span className="text-zinc-500">{shortcut}</span>
+              <div className="absolute left-full ml-3 px-3 py-1.5 bg-cinema-dark/98 border border-cinema-border text-silver-light text-xs font-body rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 shadow-cinematic backdrop-blur-md">
+                {label} <span className="text-amber-muted font-mono text-[10px]">{shortcut}</span>
               </div>
             </button>
           ))}
@@ -279,14 +279,14 @@ export const ToolPanel: React.FC<{ className?: string }> = ({ className }) => {
 
       {/* Options Panel */}
       {showOptions.show && (
-        <div className="ml-2 bg-zinc-900/95 backdrop-blur-xl border border-zinc-700/50 rounded-2xl shadow-2xl w-[170px] overflow-hidden flex flex-col" style={{ height: mainPanelHeight > 0 ? mainPanelHeight : "auto" }}>
+        <div className="ml-2 tool-panel w-[180px] overflow-hidden flex flex-col" style={{ height: mainPanelHeight > 0 ? mainPanelHeight : "auto" }}>
           {/* Panel Header for sub-views */}
           {panelView !== "main" && (
-            <button onClick={() => setPanelView("main")} className="flex items-center gap-2 px-3 py-2 text-xs text-zinc-400 hover:text-white hover:bg-zinc-800/50 border-b border-zinc-700/50 transition-colors">
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <button onClick={() => setPanelView("main")} className="flex items-center gap-2 px-3 py-2.5 text-xs text-silver hover:text-amber-warm border-b border-cinema-border transition-colors group">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="group-hover:-translate-x-0.5 transition-transform">
                 <path d="M7.5 9L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              <span className="font-medium">{panelView === "shadow" ? "Shadow" : panelView === "stroke" ? "Stroke" : "Presets"}</span>
+              <span className="font-medium font-display tracking-wider text-[11px]">{panelView === "shadow" ? "SHADOW" : panelView === "stroke" ? "STROKE" : "PRESETS"}</span>
             </button>
           )}
 
@@ -297,11 +297,11 @@ export const ToolPanel: React.FC<{ className?: string }> = ({ className }) => {
                 {/* Color */}
                 {showOptions.color && (
                   <Section title="Color">
-                    <div className="grid grid-cols-4 gap-1.5">
+                    <div className="grid grid-cols-4 gap-2">
                       {ANNOTATION_COLORS.map((c) => (
                         <button
                           key={c}
-                          className={`w-6 h-6 rounded-md transition-all ${config.strokeColor === c ? "ring-2 ring-white ring-offset-1 ring-offset-zinc-900 scale-110" : "hover:scale-105"}`}
+                          className={`color-swatch ${config.strokeColor === c ? "active" : ""}`}
                           style={{ backgroundColor: c }}
                           onClick={() => {
                             setConfig({ strokeColor: c });
@@ -310,7 +310,6 @@ export const ToolPanel: React.FC<{ className?: string }> = ({ className }) => {
                           }}
                         />
                       ))}
-                      {/* Custom color picker - always shows rainbow, click to pick any color */}
                       <div className="relative w-6 h-6 group">
                         <input
                           type="color"
@@ -324,17 +323,16 @@ export const ToolPanel: React.FC<{ className?: string }> = ({ className }) => {
                           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                         />
                         <div
-                          className="w-6 h-6 rounded-md border border-zinc-600 flex items-center justify-center transition-all group-hover:scale-105"
+                          className="w-6 h-6 rounded-lg border border-cinema-border-strong flex items-center justify-center transition-all group-hover:scale-110 group-hover:border-amber-glow/50"
                           style={{
-                            background: "conic-gradient(from 0deg, #ef4444, #f59e0b, #22c55e, #3b82f6, #8b5cf6, #ec4899, #ef4444)",
+                            background: "conic-gradient(from 0deg, #e85d5d, #fbbf24, #4ade80, #d4a574, #a78bfa, #ec4899, #e85d5d)",
                           }}
                         >
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" className="drop-shadow">
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" className="drop-shadow-md">
                             <path d="M12 5v14M5 12h14" strokeLinecap="round" />
                           </svg>
                         </div>
-                        {/* Custom color indicator - small dot when custom color is active */}
-                        {!ANNOTATION_COLORS.includes(config.strokeColor as any) && <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-zinc-900 shadow-sm" style={{ backgroundColor: config.strokeColor }} />}
+                        {!ANNOTATION_COLORS.includes(config.strokeColor as any) && <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-cinema-dark shadow-glow-sm" style={{ backgroundColor: config.strokeColor }} />}
                       </div>
                     </div>
                   </Section>
@@ -439,11 +437,11 @@ export const ToolPanel: React.FC<{ className?: string }> = ({ className }) => {
                 {/* Stroke Width */}
                 {showOptions.strokeWidth && (
                   <Section title="Size">
-                    <div className="flex gap-1">
+                    <div className="flex gap-1.5">
                       {[2, 3, 5, 8].map((w) => (
                         <button
                           key={w}
-                          className={`flex-1 h-7 rounded-lg flex items-center justify-center transition-colors ${config.strokeWidth === w ? "bg-blue-500" : "bg-zinc-800 hover:bg-zinc-700"}`}
+                          className={`mini-btn h-8 flex items-center justify-center ${config.strokeWidth === w ? "active" : ""}`}
                           onClick={() => {
                             setConfig({ strokeWidth: w });
                             applyToSelected({ strokeWidth: w });
@@ -460,7 +458,7 @@ export const ToolPanel: React.FC<{ className?: string }> = ({ className }) => {
                 {showOptions.spotlight && (
                   <>
                     <Section title="Shape">
-                      <div className="flex gap-1">
+                      <div className="flex gap-1.5">
                         {(["circle", "rounded", "rectangle"] as const).map((s) => (
                           <Btn key={s} active={config.spotlightShape === s} onClick={() => setConfig({ spotlightShape: s })}>
                             {s === "circle" ? "○" : s === "rounded" ? "▢" : "□"}
@@ -469,10 +467,10 @@ export const ToolPanel: React.FC<{ className?: string }> = ({ className }) => {
                       </div>
                     </Section>
                     <Section title="Color">
-                      <input type="color" value={config.spotlightColor} onChange={(e) => setConfig({ spotlightColor: e.target.value })} className="w-full h-7 rounded-lg cursor-pointer bg-zinc-800 border border-zinc-700" />
+                      <input type="color" value={config.spotlightColor} onChange={(e) => setConfig({ spotlightColor: e.target.value })} className="w-full h-8 rounded-lg cursor-pointer bg-cinema-surface border border-cinema-border" />
                     </Section>
                     <Section title={`Opacity ${Math.round(config.spotlightDarkness * 100)}%`}>
-                      <input type="range" min="30" max="90" value={config.spotlightDarkness * 100} onChange={(e) => setConfig({ spotlightDarkness: +e.target.value / 100 })} className="w-full accent-blue-500 h-1" />
+                      <input type="range" min="30" max="90" value={config.spotlightDarkness * 100} onChange={(e) => setConfig({ spotlightDarkness: +e.target.value / 100 })} className="w-full h-1" />
                     </Section>
                   </>
                 )}
@@ -481,11 +479,11 @@ export const ToolPanel: React.FC<{ className?: string }> = ({ className }) => {
                 {showOptions.blur && (
                   <>
                     <Section title="Type">
-                      <div className="flex gap-1">
+                      <div className="flex gap-1.5">
                         {BLUR_TYPES.map((b) => (
                           <button
                             key={b.id}
-                            className={`flex-1 py-1.5 rounded-lg text-[11px] flex items-center justify-center gap-1 transition-colors ${config.blurStyle === b.type ? "bg-blue-500 text-white" : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"}`}
+                            className={`mini-btn py-2 text-[10px] flex items-center justify-center gap-1 ${config.blurStyle === b.type ? "active" : ""}`}
                             onClick={async () => {
                               setConfig({ blurStyle: b.type });
                               if (selectedObjectType === "blur") {
@@ -511,9 +509,9 @@ export const ToolPanel: React.FC<{ className?: string }> = ({ className }) => {
                             await updateSelectedBlur(config.blurStyle, config.blurIntensity);
                           }
                         }}
-                        className="w-full accent-blue-500 h-1"
+                        className="w-full h-1"
                       />
-                      <div className="flex justify-between text-[9px] text-zinc-500 mt-1">
+                      <div className="flex justify-between text-[9px] text-silver-muted mt-1.5 font-medium">
                         <span>Light</span>
                         <span>Heavy</span>
                       </div>
@@ -527,14 +525,14 @@ export const ToolPanel: React.FC<{ className?: string }> = ({ className }) => {
                     {/* Quick Presets */}
                     {userTextPresets.length > 0 && (
                       <Section title="Quick">
-                        <div className="flex gap-1 flex-wrap">
+                        <div className="flex gap-1.5 flex-wrap">
                           {userTextPresets.slice(0, 3).map((p) => (
-                            <button key={p.id} onClick={() => applyPreset(p)} className="px-2 py-1 rounded text-[10px] bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white truncate max-w-[50px]" title={p.name}>
+                            <button key={p.id} onClick={() => applyPreset(p)} className="px-2.5 py-1 rounded-md text-[10px] bg-cinema-elevated/80 text-silver border border-cinema-border hover:border-amber-glow/30 hover:text-amber-warm transition-all truncate max-w-[50px]" title={p.name}>
                               {p.name}
                             </button>
                           ))}
                           {userTextPresets.length > 3 && (
-                            <button onClick={() => setPanelView("presets")} className="px-2 py-1 rounded text-[10px] bg-zinc-800 text-zinc-500 hover:bg-zinc-700">
+                            <button onClick={() => setPanelView("presets")} className="px-2.5 py-1 rounded-md text-[10px] bg-cinema-elevated/50 text-silver-muted hover:text-silver transition-colors">
                               +{userTextPresets.length - 3}
                             </button>
                           )}
@@ -555,14 +553,14 @@ export const ToolPanel: React.FC<{ className?: string }> = ({ className }) => {
                             setFontSearch("");
                           }}
                           placeholder="Search..."
-                          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1.5 text-[11px] text-white focus:border-blue-500 focus:outline-none"
+                          className="w-full bg-cinema-black/60 border border-cinema-border rounded-lg px-3 py-2 text-[11px] text-silver-light focus:border-amber-glow/50 focus:outline-none transition-colors"
                         />
                         {fontDropdownOpen && (
-                          <div ref={fontListRef} className="absolute z-50 top-full left-0 right-0 mt-1 max-h-28 overflow-y-auto bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl">
+                          <div ref={fontListRef} className="font-dropdown">
                             {filteredFonts.map((f) => (
                               <button
                                 key={f}
-                                className="w-full px-2 py-1 text-left text-[11px] text-zinc-300 hover:bg-zinc-700 truncate"
+                                className="w-full px-3 py-1.5 text-left text-[11px] text-silver hover:bg-amber-glow/10 hover:text-amber-warm truncate transition-colors"
                                 style={{ fontFamily: f }}
                                 onClick={() => {
                                   setConfig({ fontFamily: f });
@@ -573,7 +571,7 @@ export const ToolPanel: React.FC<{ className?: string }> = ({ className }) => {
                                 {f}
                               </button>
                             ))}
-                            {!filteredFonts.length && <div className="px-2 py-2 text-[11px] text-zinc-500">No fonts</div>}
+                            {!filteredFonts.length && <div className="px-3 py-2 text-[11px] text-silver-muted">No fonts</div>}
                           </div>
                         )}
                       </div>
@@ -581,7 +579,7 @@ export const ToolPanel: React.FC<{ className?: string }> = ({ className }) => {
 
                     {/* Size & Weight */}
                     <Section title="Size">
-                      <div className="flex gap-1">
+                      <div className="flex gap-1.5">
                         {[16, 24, 32, 48].map((s) => (
                           <Btn
                             key={s}
@@ -597,7 +595,7 @@ export const ToolPanel: React.FC<{ className?: string }> = ({ className }) => {
                       </div>
                     </Section>
                     <Section title="Weight">
-                      <div className="flex gap-1">
+                      <div className="flex gap-1.5">
                         <Btn
                           active={config.fontWeight === "normal"}
                           onClick={() => {
@@ -621,7 +619,7 @@ export const ToolPanel: React.FC<{ className?: string }> = ({ className }) => {
 
                     {/* Alignment */}
                     <Section title="Align">
-                      <div className="flex gap-1">
+                      <div className="flex gap-1.5">
                         {(["left", "center", "right"] as const).map((a) => (
                           <Btn
                             key={a}
@@ -639,50 +637,50 @@ export const ToolPanel: React.FC<{ className?: string }> = ({ className }) => {
 
                     {/* Spacing */}
                     <Section title="Spacing">
-                      <div className="flex gap-2 items-center mb-2">
-                        <span className="text-[10px] text-zinc-500 w-8">Line</span>
+                      <div className="flex gap-2 items-center mb-2.5">
+                        <span className="text-[10px] text-silver-muted w-8">Line</span>
                         <button
                           onClick={() => {
                             const v = Math.max(0.8, config.lineHeight - 0.1);
                             setConfig({ lineHeight: v });
                             applyToSelected({ lineHeight: v });
                           }}
-                          className="w-6 h-6 rounded bg-zinc-800 text-zinc-400 hover:bg-zinc-700 text-xs"
+                          className="w-6 h-6 rounded-md bg-cinema-elevated text-silver hover:bg-cinema-elevated/80 hover:text-amber-warm text-xs transition-colors"
                         >
                           −
                         </button>
-                        <span className="text-[11px] text-zinc-300 w-8 text-center">{config.lineHeight.toFixed(1)}</span>
+                        <span className="text-[11px] text-silver-light w-8 text-center font-mono">{config.lineHeight.toFixed(1)}</span>
                         <button
                           onClick={() => {
                             const v = Math.min(3, config.lineHeight + 0.1);
                             setConfig({ lineHeight: v });
                             applyToSelected({ lineHeight: v });
                           }}
-                          className="w-6 h-6 rounded bg-zinc-800 text-zinc-400 hover:bg-zinc-700 text-xs"
+                          className="w-6 h-6 rounded-md bg-cinema-elevated text-silver hover:bg-cinema-elevated/80 hover:text-amber-warm text-xs transition-colors"
                         >
                           +
                         </button>
                       </div>
                       <div className="flex gap-2 items-center">
-                        <span className="text-[10px] text-zinc-500 w-8">Char</span>
+                        <span className="text-[10px] text-silver-muted w-8">Char</span>
                         <button
                           onClick={() => {
                             const v = Math.max(-200, config.charSpacing - 50);
                             setConfig({ charSpacing: v });
                             applyToSelected({ charSpacing: v });
                           }}
-                          className="w-6 h-6 rounded bg-zinc-800 text-zinc-400 hover:bg-zinc-700 text-xs"
+                          className="w-6 h-6 rounded-md bg-cinema-elevated text-silver hover:bg-cinema-elevated/80 hover:text-amber-warm text-xs transition-colors"
                         >
                           −
                         </button>
-                        <span className="text-[11px] text-zinc-300 w-8 text-center">{config.charSpacing}</span>
+                        <span className="text-[11px] text-silver-light w-8 text-center font-mono">{config.charSpacing}</span>
                         <button
                           onClick={() => {
                             const v = Math.min(500, config.charSpacing + 50);
                             setConfig({ charSpacing: v });
                             applyToSelected({ charSpacing: v });
                           }}
-                          className="w-6 h-6 rounded bg-zinc-800 text-zinc-400 hover:bg-zinc-700 text-xs"
+                          className="w-6 h-6 rounded-md bg-cinema-elevated text-silver hover:bg-cinema-elevated/80 hover:text-amber-warm text-xs transition-colors"
                         >
                           +
                         </button>
@@ -702,7 +700,7 @@ export const ToolPanel: React.FC<{ className?: string }> = ({ className }) => {
                     {/* Presets */}
                     <Section title="Presets">
                       <NavBtn onClick={() => setPanelView("presets")} active={false}>
-                        Manage Presets →
+                        Manage Presets
                       </NavBtn>
                     </Section>
                   </>
@@ -714,7 +712,7 @@ export const ToolPanel: React.FC<{ className?: string }> = ({ className }) => {
             {panelView === "shadow" && (
               <>
                 <div className="flex items-center justify-between mb-4">
-                  <span className="text-[11px] text-zinc-300">Enable Shadow</span>
+                  <span className="text-[11px] text-silver-light">Enable Shadow</span>
                   <Toggle
                     active={config.textShadow}
                     onClick={() => {
@@ -733,7 +731,7 @@ export const ToolPanel: React.FC<{ className?: string }> = ({ className }) => {
                           setConfig({ textShadowColor: e.target.value });
                           setTimeout(applyShadow, 0);
                         }}
-                        className="w-full h-8 rounded-lg cursor-pointer bg-zinc-800 border border-zinc-700"
+                        className="w-full h-9 rounded-lg cursor-pointer bg-cinema-surface border border-cinema-border"
                       />
                     </Section>
                     <div className="grid grid-cols-2 gap-2">
@@ -777,7 +775,7 @@ export const ToolPanel: React.FC<{ className?: string }> = ({ className }) => {
             {panelView === "stroke" && (
               <>
                 <div className="flex items-center justify-between mb-4">
-                  <span className="text-[11px] text-zinc-300">Enable Stroke</span>
+                  <span className="text-[11px] text-silver-light">Enable Stroke</span>
                   <Toggle
                     active={config.textStroke}
                     onClick={() => {
@@ -797,7 +795,7 @@ export const ToolPanel: React.FC<{ className?: string }> = ({ className }) => {
                           setConfig({ textStrokeColor: e.target.value });
                           applyToSelected({ stroke: e.target.value });
                         }}
-                        className="w-full h-8 rounded-lg cursor-pointer bg-zinc-800 border border-zinc-700"
+                        className="w-full h-9 rounded-lg cursor-pointer bg-cinema-surface border border-cinema-border"
                       />
                     </Section>
                     <NumInput
@@ -825,25 +823,25 @@ export const ToolPanel: React.FC<{ className?: string }> = ({ className }) => {
                   onChange={(e) => setNewPresetName(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && savePreset()}
                   placeholder="Preset name..."
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1.5 text-[11px] text-white focus:border-blue-500 focus:outline-none mb-2"
+                  className="w-full bg-cinema-black/60 border border-cinema-border rounded-lg px-3 py-2 text-[11px] text-silver-light focus:border-amber-glow/50 focus:outline-none mb-3 transition-colors"
                 />
-                <button onClick={savePreset} disabled={!newPresetName.trim()} className="w-full py-1.5 rounded-lg text-[11px] bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed font-medium mb-3">
+                <button onClick={savePreset} disabled={!newPresetName.trim()} className="btn btn-primary w-full py-2.5 text-[11px] mb-4 disabled:opacity-40 disabled:cursor-not-allowed">
                   Save Current Style
                 </button>
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   {!userTextPresets.length && (
-                    <div className="text-[11px] text-zinc-500 text-center py-6">
+                    <div className="text-[11px] text-silver-muted text-center py-6">
                       No presets yet.
                       <br />
-                      Configure text style and save.
+                      <span className="text-amber-muted">Configure text style and save.</span>
                     </div>
                   )}
                   {userTextPresets.map((p) => (
-                    <div key={p.id} className="group flex items-center gap-1 bg-zinc-800/50 rounded-lg px-2 py-1.5 hover:bg-zinc-800 transition-colors">
-                      <button onClick={() => applyPreset(p)} className="flex-1 text-left text-[11px] text-zinc-300 truncate">
+                    <div key={p.id} className="group flex items-center gap-1.5 bg-cinema-elevated/50 border border-cinema-border rounded-lg px-3 py-2 hover:border-amber-glow/20 transition-colors">
+                      <button onClick={() => applyPreset(p)} className="flex-1 text-left text-[11px] text-silver truncate hover:text-amber-warm transition-colors">
                         {p.name}
                       </button>
-                      <button onClick={() => deletePreset(p.id)} className="p-1 rounded text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all">
+                      <button onClick={() => deletePreset(p.id)} className="p-1 rounded text-silver-muted hover:text-accent-danger opacity-0 group-hover:opacity-100 transition-all">
                         <svg width="10" height="10" viewBox="0 0 10 10">
                           <path d="M2 2L8 8M8 2L2 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                         </svg>
@@ -862,41 +860,39 @@ export const ToolPanel: React.FC<{ className?: string }> = ({ className }) => {
 
 // Components
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-  <div className="mb-3">
-    <div className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1.5">{title}</div>
+  <div className="mb-4">
+    <div className="section-title">{title}</div>
     {children}
   </div>
 );
 
 const Btn: React.FC<{ active: boolean; onClick: () => void; children: React.ReactNode }> = ({ active, onClick, children }) => (
-  <button className={`flex-1 py-1.5 rounded-lg text-[11px] transition-colors ${active ? "bg-blue-500 text-white" : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"}`} onClick={onClick}>
+  <button className={`mini-btn ${active ? "active" : ""}`} onClick={onClick}>
     {children}
   </button>
 );
 
 const NavBtn: React.FC<{ onClick: () => void; active: boolean; children: React.ReactNode }> = ({ onClick, active, children }) => (
-  <button onClick={onClick} className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-[11px] transition-colors mb-1 ${active ? "bg-blue-500/20 text-blue-400" : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"}`}>
+  <button onClick={onClick} className={`nav-btn ${active ? "active" : ""}`}>
     <span>{children}</span>
-    {active && <span className="text-[9px]">✓</span>}
+    {active && <span className="text-[9px] text-amber-glow">ON</span>}
   </button>
 );
 
 const Toggle: React.FC<{ active: boolean; onClick: () => void }> = ({ active, onClick }) => (
-  <button onClick={onClick} className={`w-10 h-5 rounded-full transition-colors relative ${active ? "bg-blue-500" : "bg-zinc-700"}`}>
-    <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${active ? "left-5" : "left-0.5"}`} />
-  </button>
+  <button onClick={onClick} className={`toggle-switch ${active ? "active" : ""}`} />
 );
 
 const NumInput: React.FC<{ label: string; value: number; onChange: (v: number) => void; min?: number; max?: number; step?: number }> = ({ label, value, onChange, min = 0, max = 100, step = 0.5 }) => (
   <div className="mb-2">
-    <div className="text-[10px] text-zinc-500 mb-1">{label}</div>
-    <input type="number" step={step} min={min} max={max} value={value} onChange={(e) => onChange(parseFloat(e.target.value) || 0)} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1.5 text-[11px] text-white focus:border-blue-500 focus:outline-none" />
+    <div className="text-[10px] text-silver-muted mb-1.5">{label}</div>
+    <input type="number" step={step} min={min} max={max} value={value} onChange={(e) => onChange(parseFloat(e.target.value) || 0)} className="num-input" />
   </div>
 );
 
 const PresetBtn: React.FC<{ p: { id: string; name: string; icon: string }; active: boolean; onClick: () => void }> = ({ p, active, onClick }) => (
-  <button className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left text-[11px] transition-colors ${active ? "bg-blue-500/20 text-blue-400" : "hover:bg-zinc-800 text-zinc-300"}`} onClick={onClick}>
-    <span className="w-4 text-center">{p.icon}</span>
+  <button className={`preset-btn ${active ? "active" : ""}`} onClick={onClick}>
+    <span className="icon">{p.icon}</span>
     <span>{p.name}</span>
   </button>
 );

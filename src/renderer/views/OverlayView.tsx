@@ -516,7 +516,7 @@ export const OverlayView: React.FC = () => {
       <ToolPanel />
       <OptionsPanel onSave={handleQuickSave} onClear={handleClear} onClose={handleClose} onOpenSettings={handleOpenSettings} imageMode={imageMode} screenCapture={screenCapture} />
       <SaveDialog isOpen={showSaveDialog && !imageMode.isImageMode} onClose={() => setShowSaveDialog(false)} onSave={handleSaveWithOptions} />
-      {notification && <div className="fixed top-4 right-4 px-4 py-2 bg-green-500 text-white rounded-lg shadow-lg z-50">{notification}</div>}
+      {notification && <div className="notification">{notification}</div>}
     </div>
   );
 };

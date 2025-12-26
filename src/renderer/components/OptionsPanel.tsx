@@ -281,40 +281,40 @@ export const OptionsPanel: React.FC<OptionsPanelProps> = ({ onSave, onClear, onC
     <div className="options-panel" style={panelStyle} onMouseDown={handleDragStart}>
       {/* Undo/Redo */}
       <div className="flex items-center gap-1">
-        <button className={`action-btn ${!canUndo() ? "opacity-30 cursor-not-allowed" : ""}`} onClick={handleUndo} disabled={!canUndo()} title="Undo (Ctrl+Z)">
+        <button className={`action-btn ${!canUndo() ? "opacity-30 cursor-not-allowed" : "hover:text-amber-warm"}`} onClick={handleUndo} disabled={!canUndo()} title="Undo (Ctrl+Z)">
           <UndoIcon size={18} />
         </button>
-        <button className={`action-btn ${!canRedo() ? "opacity-30 cursor-not-allowed" : ""}`} onClick={handleRedo} disabled={!canRedo()} title="Redo (Ctrl+Shift+Z)">
+        <button className={`action-btn ${!canRedo() ? "opacity-30 cursor-not-allowed" : "hover:text-amber-warm"}`} onClick={handleRedo} disabled={!canRedo()} title="Redo (Ctrl+Shift+Z)">
           <RedoIcon size={18} />
         </button>
       </div>
 
-      <div className="w-px h-5 bg-zinc-700" />
+      <div className="w-px h-5 bg-gradient-to-b from-transparent via-cinema-border-strong to-transparent" />
 
       {/* Actions */}
       <div className="flex items-center gap-1">
-        <button className="action-btn hover:text-red-400" onClick={onClear} title="Clear All (Ctrl+Del)">
+        <button className="action-btn hover:text-accent-danger" onClick={onClear} title="Clear All (Ctrl+Del)">
           <TrashIcon size={18} />
         </button>
-        <button className={`action-btn ${activeTool === "crop" ? "text-blue-400" : ""}`} onClick={() => setActiveTool("crop")} title="Crop (C)">
+        <button className={`action-btn ${activeTool === "crop" ? "text-amber-glow" : "hover:text-amber-warm"}`} onClick={() => setActiveTool("crop")} title="Crop (C)">
           <CropIcon size={18} />
         </button>
-        <button className="action-btn text-green-400 hover:text-green-300" onClick={onSave} title="Save (Ctrl+S)">
+        <button className="action-btn text-accent-success hover:text-green-300" onClick={onSave} title="Save (Ctrl+S)">
           <SaveIcon size={18} />
         </button>
-        <button className={`action-btn text-purple-400 hover:text-purple-300 ${isUploading ? "opacity-50 cursor-not-allowed" : ""}`} onClick={handleUpload} disabled={isUploading} title="Upload to Web">
+        <button className={`action-btn text-accent-secondary hover:text-purple-300 ${isUploading ? "opacity-50 cursor-not-allowed" : ""}`} onClick={handleUpload} disabled={isUploading} title="Upload to Web">
           <UploadIcon size={18} />
         </button>
       </div>
 
-      <div className="w-px h-5 bg-zinc-700" />
+      <div className="w-px h-5 bg-gradient-to-b from-transparent via-cinema-border-strong to-transparent" />
 
       {/* Settings & Close */}
       <div className="flex items-center gap-1">
-        <button className="action-btn hover:text-blue-400" onClick={handleSettings} title="Settings">
+        <button className="action-btn hover:text-amber-warm" onClick={handleSettings} title="Settings">
           <SettingsIcon size={18} />
         </button>
-        <button className="action-btn text-red-400 hover:text-red-300 hover:bg-red-500/20" onClick={handleClose} title="Close (Esc)">
+        <button className="action-btn text-accent-danger hover:text-red-300 hover:bg-accent-danger/10" onClick={handleClose} title="Close (Esc)">
           <CloseIcon size={18} />
         </button>
       </div>

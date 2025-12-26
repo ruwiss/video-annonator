@@ -28,46 +28,56 @@ export const SaveDialog: React.FC<SaveDialogProps> = ({ isOpen, onClose, onSave 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-
-      {/* Dialog */}
-      <div className="relative bg-zinc-900 rounded-2xl shadow-2xl border border-zinc-800 w-[380px] animate-scale-in">
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
-          <h2 className="text-lg font-semibold text-white">Save Annotation</h2>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors">
+    <div className="dialog-overlay animate-fade-in">
+      <div className="dialog-content animate-scale-in w-[400px]">
+        <div className="dialog-header flex items-center justify-between">
+          <h2>SAVE ANNOTATION</h2>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-cinema-elevated text-silver hover:text-amber-warm transition-colors">
             <CloseIcon size={18} />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-5 space-y-5">
-          {/* Background Option */}
-          <div className="space-y-3">
-            <label className="text-sm font-medium text-zinc-300">Background</label>
-            <div className="grid grid-cols-2 gap-3">
-              <button onClick={() => setIncludeBackground(false)} className={`p-4 rounded-xl border-2 transition-all ${!includeBackground ? "border-blue-500 bg-blue-500/10" : "border-zinc-700 hover:border-zinc-600"}`}>
-                <div className="w-full h-16 rounded-lg mb-2 bg-[repeating-conic-gradient(#333_0%_25%,#444_0%_50%)] bg-[length:16px_16px]" />
-                <span className={`text-sm ${!includeBackground ? "text-blue-400" : "text-zinc-400"}`}>Transparent</span>
+        <div className="dialog-body">
+          <div className="space-y-4">
+            <label className="text-xs font-medium text-silver-muted uppercase tracking-wider">Background</label>
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                onClick={() => setIncludeBackground(false)}
+                className={`p-5 rounded-xl border-2 transition-all group ${
+                  !includeBackground
+                    ? "border-amber-glow bg-amber-glow/10 shadow-glow"
+                    : "border-cinema-border hover:border-cinema-border-strong"
+                }`}
+              >
+                <div className="w-full h-16 rounded-lg mb-3 bg-[repeating-conic-gradient(#1f1f23_0%_25%,#2a2a2f_0%_50%)] bg-[length:12px_12px]" />
+                <span className={`text-sm font-medium ${!includeBackground ? "text-amber-warm" : "text-silver group-hover:text-silver-light"}`}>
+                  Transparent
+                </span>
               </button>
-              <button onClick={() => setIncludeBackground(true)} className={`p-4 rounded-xl border-2 transition-all ${includeBackground ? "border-blue-500 bg-blue-500/10" : "border-zinc-700 hover:border-zinc-600"}`}>
-                <div className="w-full h-16 rounded-lg mb-2 bg-gradient-to-br from-zinc-700 to-zinc-800 flex items-center justify-center">
-                  <span className="text-xs text-zinc-500">Screenshot</span>
+              <button
+                onClick={() => setIncludeBackground(true)}
+                className={`p-5 rounded-xl border-2 transition-all group ${
+                  includeBackground
+                    ? "border-amber-glow bg-amber-glow/10 shadow-glow"
+                    : "border-cinema-border hover:border-cinema-border-strong"
+                }`}
+              >
+                <div className="w-full h-16 rounded-lg mb-3 bg-gradient-to-br from-cinema-elevated to-cinema-surface flex items-center justify-center border border-cinema-border">
+                  <span className="text-[10px] text-silver-muted uppercase tracking-wider">Screenshot</span>
                 </div>
-                <span className={`text-sm ${includeBackground ? "text-blue-400" : "text-zinc-400"}`}>With Background</span>
+                <span className={`text-sm font-medium ${includeBackground ? "text-amber-warm" : "text-silver group-hover:text-silver-light"}`}>
+                  With Background
+                </span>
               </button>
             </div>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="flex gap-3 px-5 py-4 border-t border-zinc-800">
-          <button onClick={onClose} className="flex-1 py-2.5 px-4 rounded-lg text-sm font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700 transition-colors">
+        <div className="dialog-footer">
+          <button onClick={onClose} className="btn btn-secondary flex-1">
             Cancel
           </button>
-          <button onClick={handleSave} className="flex-1 py-2.5 px-4 rounded-lg text-sm font-medium bg-blue-500 text-white hover:bg-blue-600 transition-colors">
+          <button onClick={handleSave} className="btn btn-primary flex-1">
             Save
           </button>
         </div>
