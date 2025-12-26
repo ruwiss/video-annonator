@@ -519,6 +519,254 @@ export const ToolPanel: React.FC<{ className?: string }> = ({ className }) => {
                   </>
                 )}
 
+                {/* Alignment Tools - Show when object is selected */}
+                {showOptions.alignment && selectedObjectType && (
+                  <>
+                    <Section title="Transform">
+                      <div className="grid grid-cols-4 gap-1.5 mb-3">
+                        {/* Flip Horizontal */}
+                        <button
+                          className="align-btn"
+                          onClick={() => {
+                            if (!canvas) return;
+                            const obj = canvas.getActiveObject();
+                            if (obj) {
+                              obj.set({ flipX: !obj.flipX });
+                              canvas.renderAll();
+                            }
+                          }}
+                          title="Flip Horizontal (Ctrl+H)"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M7 2v10M3 4l2 3-2 3M11 4l-2 3 2 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </button>
+                        {/* Flip Vertical */}
+                        <button
+                          className="align-btn"
+                          onClick={() => {
+                            if (!canvas) return;
+                            const obj = canvas.getActiveObject();
+                            if (obj) {
+                              obj.set({ flipY: !obj.flipY });
+                              canvas.renderAll();
+                            }
+                          }}
+                          title="Flip Vertical (Ctrl+J)"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M2 7h10M4 3l3 2-3 2M4 9l3 2-3 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" transform="rotate(90 7 7)" />
+                          </svg>
+                        </button>
+                        {/* Rotate Left */}
+                        <button
+                          className="align-btn"
+                          onClick={() => {
+                            if (!canvas) return;
+                            const obj = canvas.getActiveObject();
+                            if (obj) {
+                              obj.rotate((obj.angle || 0) - 15);
+                              canvas.renderAll();
+                            }
+                          }}
+                          title="Rotate Left 15° (Ctrl+[)"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M2 7a5 5 0 1 1 1.5 3.5M2 7V4M2 7h3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </button>
+                        {/* Rotate Right */}
+                        <button
+                          className="align-btn"
+                          onClick={() => {
+                            if (!canvas) return;
+                            const obj = canvas.getActiveObject();
+                            if (obj) {
+                              obj.rotate((obj.angle || 0) + 15);
+                              canvas.renderAll();
+                            }
+                          }}
+                          title="Rotate Right 15° (Ctrl+])"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M12 7a5 5 0 1 0-1.5 3.5M12 7V4M12 7h-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </button>
+                      </div>
+                      {/* Duplicate button */}
+                      <button
+                        className="w-full py-1.5 rounded-md text-[10px] bg-cinema-elevated/60 text-silver border border-cinema-border hover:border-amber-glow/30 hover:text-amber-warm transition-all flex items-center justify-center gap-1.5"
+                        onClick={() => {
+                          if (!canvas) return;
+                          const obj = canvas.getActiveObject();
+                          if (obj) {
+                            obj.clone(
+                              (cloned: fabric.Object) => {
+                                cloned.set({
+                                  left: (obj.left || 0) + 20,
+                                  top: (obj.top || 0) + 20,
+                                  evented: true,
+                                  selectable: true,
+                                });
+                                // For IText objects, ensure editing capability is preserved
+                                if (cloned.type === "i-text") {
+                                  (cloned as any).set({ editable: true });
+                                }
+                                canvas.add(cloned);
+                                canvas.setActiveObject(cloned);
+                                canvas.renderAll();
+                              },
+                              ["data", "selectable", "evented"]
+                            );
+                          }
+                        }}
+                      >
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                          <rect x="1" y="3" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.2" />
+                          <rect x="5" y="3" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.2" fill="rgba(17,17,19,0.8)" />
+                        </svg>
+                        Duplicate (Ctrl+D)
+                      </button>
+                    </Section>
+
+                    <Section title="Align to Canvas">
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {/* Horizontal alignment */}
+                        <button
+                          className="align-btn"
+                          onClick={() => {
+                            if (!canvas) return;
+                            const obj = canvas.getActiveObject();
+                            if (obj) {
+                              obj.set({ left: 0 });
+                              canvas.renderAll();
+                            }
+                          }}
+                          title="Align Left"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M2 2v10M5 4h6M5 7h4M5 10h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                          </svg>
+                        </button>
+                        <button
+                          className="align-btn"
+                          onClick={() => {
+                            if (!canvas) return;
+                            const obj = canvas.getActiveObject();
+                            if (obj) {
+                              const canvasCenter = canvas.getWidth() / 2;
+                              const objWidth = obj.getScaledWidth();
+                              obj.set({ left: canvasCenter - objWidth / 2 });
+                              canvas.renderAll();
+                            }
+                          }}
+                          title="Align Center Horizontal"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M7 2v10M4 4h6M5 7h4M4 10h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                          </svg>
+                        </button>
+                        <button
+                          className="align-btn"
+                          onClick={() => {
+                            if (!canvas) return;
+                            const obj = canvas.getActiveObject();
+                            if (obj) {
+                              const canvasWidth = canvas.getWidth();
+                              const objWidth = obj.getScaledWidth();
+                              obj.set({ left: canvasWidth - objWidth });
+                              canvas.renderAll();
+                            }
+                          }}
+                          title="Align Right"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M12 2v10M3 4h6M5 7h4M3 10h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                          </svg>
+                        </button>
+                        {/* Vertical alignment */}
+                        <button
+                          className="align-btn"
+                          onClick={() => {
+                            if (!canvas) return;
+                            const obj = canvas.getActiveObject();
+                            if (obj) {
+                              obj.set({ top: 0 });
+                              canvas.renderAll();
+                            }
+                          }}
+                          title="Align Top"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M2 2h10M4 5v6M7 5v4M10 5v6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                          </svg>
+                        </button>
+                        <button
+                          className="align-btn"
+                          onClick={() => {
+                            if (!canvas) return;
+                            const obj = canvas.getActiveObject();
+                            if (obj) {
+                              const canvasCenter = canvas.getHeight() / 2;
+                              const objHeight = obj.getScaledHeight();
+                              obj.set({ top: canvasCenter - objHeight / 2 });
+                              canvas.renderAll();
+                            }
+                          }}
+                          title="Align Center Vertical"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M2 7h10M4 4v6M7 5v4M10 4v6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                          </svg>
+                        </button>
+                        <button
+                          className="align-btn"
+                          onClick={() => {
+                            if (!canvas) return;
+                            const obj = canvas.getActiveObject();
+                            if (obj) {
+                              const canvasHeight = canvas.getHeight();
+                              const objHeight = obj.getScaledHeight();
+                              obj.set({ top: canvasHeight - objHeight });
+                              canvas.renderAll();
+                            }
+                          }}
+                          title="Align Bottom"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M2 12h10M4 3v6M7 5v4M10 3v6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                          </svg>
+                        </button>
+                      </div>
+                      {/* Center both */}
+                      <button
+                        className="w-full mt-2 py-1.5 rounded-md text-[10px] bg-cinema-elevated/60 text-silver border border-cinema-border hover:border-amber-glow/30 hover:text-amber-warm transition-all flex items-center justify-center gap-1.5"
+                        onClick={() => {
+                          if (!canvas) return;
+                          const obj = canvas.getActiveObject();
+                          if (obj) {
+                            const canvasCenterX = canvas.getWidth() / 2;
+                            const canvasCenterY = canvas.getHeight() / 2;
+                            const objWidth = obj.getScaledWidth();
+                            const objHeight = obj.getScaledHeight();
+                            obj.set({
+                              left: canvasCenterX - objWidth / 2,
+                              top: canvasCenterY - objHeight / 2,
+                            });
+                            canvas.renderAll();
+                          }
+                        }}
+                      >
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                          <circle cx="6" cy="6" r="2" stroke="currentColor" strokeWidth="1.5" />
+                          <path d="M6 1v2M6 9v2M1 6h2M9 6h2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                        </svg>
+                        Center on Canvas
+                      </button>
+                    </Section>
+                  </>
+                )}
+
                 {/* Text Options */}
                 {showOptions.text && (
                   <>
@@ -879,9 +1127,7 @@ const NavBtn: React.FC<{ onClick: () => void; active: boolean; children: React.R
   </button>
 );
 
-const Toggle: React.FC<{ active: boolean; onClick: () => void }> = ({ active, onClick }) => (
-  <button onClick={onClick} className={`toggle-switch ${active ? "active" : ""}`} />
-);
+const Toggle: React.FC<{ active: boolean; onClick: () => void }> = ({ active, onClick }) => <button onClick={onClick} className={`toggle-switch ${active ? "active" : ""}`} />;
 
 const NumInput: React.FC<{ label: string; value: number; onChange: (v: number) => void; min?: number; max?: number; step?: number }> = ({ label, value, onChange, min = 0, max = 100, step = 0.5 }) => (
   <div className="mb-2">
@@ -898,7 +1144,7 @@ const PresetBtn: React.FC<{ p: { id: string; name: string; icon: string }; activ
 );
 
 function getOptionsToShow(tool: ToolType, selectedType: string | null) {
-  const base = { show: false, color: false, fill: false, radius: false, strokeWidth: false, arrowPresets: false, linePresets: false, markerPresets: false, spotlight: false, blur: false, text: false, opacity: false };
+  const base = { show: false, color: false, fill: false, radius: false, strokeWidth: false, arrowPresets: false, linePresets: false, markerPresets: false, spotlight: false, blur: false, text: false, opacity: false, alignment: false };
 
   switch (tool) {
     case "arrow":
@@ -927,24 +1173,30 @@ function getOptionsToShow(tool: ToolType, selectedType: string | null) {
   if (tool === "select" && selectedType) {
     switch (selectedType) {
       case "arrow":
-        return base;
+        return { ...base, show: true, alignment: true };
       case "line":
-        return { ...base, show: true, color: true, linePresets: true, strokeWidth: true };
+        return { ...base, show: true, color: true, linePresets: true, strokeWidth: true, alignment: true };
       case "rectangle":
-        return { ...base, show: true, color: true, fill: true, radius: true, strokeWidth: true, opacity: true };
+        return { ...base, show: true, color: true, fill: true, radius: true, strokeWidth: true, opacity: true, alignment: true };
       case "ellipse":
-        return { ...base, show: true, color: true, fill: true, strokeWidth: true, opacity: true };
+        return { ...base, show: true, color: true, fill: true, strokeWidth: true, opacity: true, alignment: true };
       case "text":
-        return { ...base, show: true, color: true, text: true };
+        return { ...base, show: true, color: true, text: true, alignment: true };
       case "freehand":
-        return { ...base, show: true, color: true, strokeWidth: true };
+        return { ...base, show: true, color: true, strokeWidth: true, alignment: true };
       case "blur":
         // Show blur editing options when blur object is selected
-        return { ...base, show: true, blur: true };
+        return { ...base, show: true, blur: true, alignment: true };
       case "marker":
       case "numbering":
-        return { ...base, show: true, color: true };
+        return { ...base, show: true, color: true, alignment: true };
     }
   }
+
+  // Select mode without selection - show alignment for canvas
+  if (tool === "select" && !selectedType) {
+    return { ...base, show: false };
+  }
+
   return base;
 }

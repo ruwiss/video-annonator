@@ -1,9 +1,9 @@
-import React, { useEffect, useRef, useCallback } from "react";
+import React, { useEffect, useRef, useCallback, useState } from "react";
 import { fabric } from "fabric";
 import { useToolStore } from "../stores/useToolStore";
 import { useCanvasStore } from "../stores/useCanvasStore";
 import { MARKER_PRESETS, ARROW_PRESETS, LINE_PRESETS } from "../shared/presets";
-import { ImageModeState, ScreenCaptureState } from "../../shared/types";
+import { ImageModeState, ScreenCaptureState, DrawingModifiers, DrawingInfo } from "../../shared/types";
 
 interface AnnotationCanvasProps {
   width: number;
@@ -11,6 +11,127 @@ interface AnnotationCanvasProps {
   imageMode?: ImageModeState;
   screenCapture?: ScreenCaptureState;
 }
+
+// ============================================
+// SMART GUIDES OVERLAY - For both drawing and moving
+// ============================================
+
+interface SmartGuidesProps {
+  show: boolean;
+  mode: "drawing" | "moving";
+  objectBounds: { left: number; top: number; width: number; height: number } | null;
+  startPoint: { x: number; y: number } | null;
+  currentPoint: { x: number; y: number } | null;
+  canvasWidth: number;
+  canvasHeight: number;
+  modifiers: DrawingModifiers;
+  drawingInfo: DrawingInfo | null;
+  activeTool: string;
+  snapLines: { vertical: number[]; horizontal: number[] };
+}
+
+const SmartGuides: React.FC<SmartGuidesProps> = ({ show, mode, objectBounds, startPoint, currentPoint, canvasWidth, canvasHeight, modifiers, drawingInfo, activeTool, snapLines }) => {
+  if (!show) return null;
+
+  const centerX = canvasWidth / 2;
+  const centerY = canvasHeight / 2;
+  const SNAP_THRESHOLD = 8;
+
+  // For moving mode, calculate object center
+  const objCenterX = objectBounds ? objectBounds.left + objectBounds.width / 2 : null;
+  const objCenterY = objectBounds ? objectBounds.top + objectBounds.height / 2 : null;
+
+  // Check proximity to guides
+  const isNearCenterX = mode === "moving" ? objCenterX && Math.abs(objCenterX - centerX) < SNAP_THRESHOLD : currentPoint && Math.abs(currentPoint.x - centerX) < SNAP_THRESHOLD;
+
+  const isNearCenterY = mode === "moving" ? objCenterY && Math.abs(objCenterY - centerY) < SNAP_THRESHOLD : currentPoint && Math.abs(currentPoint.y - centerY) < SNAP_THRESHOLD;
+
+  // Edge alignment for moving
+  const isLeftEdgeCenter = objectBounds && Math.abs(objectBounds.left - centerX) < SNAP_THRESHOLD;
+  const isRightEdgeCenter = objectBounds && Math.abs(objectBounds.left + objectBounds.width - centerX) < SNAP_THRESHOLD;
+  const isTopEdgeCenter = objectBounds && Math.abs(objectBounds.top - centerY) < SNAP_THRESHOLD;
+  const isBottomEdgeCenter = objectBounds && Math.abs(objectBounds.top + objectBounds.height - centerY) < SNAP_THRESHOLD;
+
+  const showVerticalCenter = isNearCenterX || isLeftEdgeCenter || isRightEdgeCenter;
+  const showHorizontalCenter = isNearCenterY || isTopEdgeCenter || isBottomEdgeCenter;
+
+  return (
+    <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden">
+      <svg className="absolute inset-0 w-full h-full">
+        {/* Canvas center guides */}
+        <line x1={centerX} y1={0} x2={centerX} y2={canvasHeight} stroke={showVerticalCenter ? "#3b82f6" : "rgba(59, 130, 246, 0.15)"} strokeWidth={showVerticalCenter ? 2 : 1} strokeDasharray={showVerticalCenter ? "none" : "4 4"} />
+        <line x1={0} y1={centerY} x2={canvasWidth} y2={centerY} stroke={showHorizontalCenter ? "#3b82f6" : "rgba(59, 130, 246, 0.15)"} strokeWidth={showHorizontalCenter ? 2 : 1} strokeDasharray={showHorizontalCenter ? "none" : "4 4"} />
+
+        {/* Dynamic snap lines from other objects */}
+        {snapLines.vertical.map((x, i) => (
+          <line key={`v-${i}`} x1={x} y1={0} x2={x} y2={canvasHeight} stroke="#f59e0b" strokeWidth={1} strokeDasharray="3 3" />
+        ))}
+        {snapLines.horizontal.map((y, i) => (
+          <line key={`h-${i}`} x1={0} y1={y} x2={canvasWidth} y2={y} stroke="#f59e0b" strokeWidth={1} strokeDasharray="3 3" />
+        ))}
+
+        {/* Drawing mode: start point guides */}
+        {mode === "drawing" && startPoint && (
+          <>
+            <line x1={startPoint.x} y1={0} x2={startPoint.x} y2={canvasHeight} stroke="rgba(16, 185, 129, 0.25)" strokeWidth={1} strokeDasharray="3 3" />
+            <line x1={0} y1={startPoint.y} x2={canvasWidth} y2={startPoint.y} stroke="rgba(16, 185, 129, 0.25)" strokeWidth={1} strokeDasharray="3 3" />
+          </>
+        )}
+
+        {/* 45° diagonal guides for line/arrow */}
+        {mode === "drawing" && modifiers.shift && startPoint && currentPoint && (activeTool === "line" || activeTool === "arrow") && (
+          <>
+            <line x1={startPoint.x - canvasWidth} y1={startPoint.y - canvasWidth} x2={startPoint.x + canvasWidth} y2={startPoint.y + canvasWidth} stroke="rgba(251, 191, 36, 0.3)" strokeWidth={1} strokeDasharray="4 4" />
+            <line x1={startPoint.x - canvasWidth} y1={startPoint.y + canvasWidth} x2={startPoint.x + canvasWidth} y2={startPoint.y - canvasWidth} stroke="rgba(251, 191, 36, 0.3)" strokeWidth={1} strokeDasharray="4 4" />
+          </>
+        )}
+      </svg>
+
+      {/* Drawing info tooltip */}
+      {mode === "drawing" && drawingInfo && currentPoint && (
+        <div
+          className="absolute px-2 py-1 rounded-md text-[10px] font-mono bg-cinema-dark/95 border border-cinema-border text-silver-light shadow-lg backdrop-blur-sm"
+          style={{
+            left: currentPoint.x + 16,
+            top: currentPoint.y + 16,
+            transform: currentPoint.x > canvasWidth - 120 ? "translateX(-100%)" : "none",
+          }}
+        >
+          <div className="flex gap-3">
+            <span className="text-amber-warm">
+              {Math.round(drawingInfo.width)} × {Math.round(drawingInfo.height)}
+            </span>
+            {drawingInfo.distance !== undefined && <span className="text-blue-400">{Math.round(drawingInfo.distance)}px</span>}
+            {drawingInfo.angle !== undefined && <span className="text-emerald-400">{Math.round(drawingInfo.angle)}°</span>}
+          </div>
+        </div>
+      )}
+
+      {/* Moving mode: position info */}
+      {mode === "moving" && objectBounds && (
+        <div
+          className="absolute px-2 py-1 rounded-md text-[10px] font-mono bg-cinema-dark/95 border border-cinema-border text-silver-light shadow-lg backdrop-blur-sm"
+          style={{
+            left: objectBounds.left + objectBounds.width + 8,
+            top: objectBounds.top - 4,
+          }}
+        >
+          <span className="text-emerald-400">
+            {Math.round(objectBounds.left)}, {Math.round(objectBounds.top)}
+          </span>
+        </div>
+      )}
+
+      {/* Modifier indicators */}
+      {mode === "drawing" && (modifiers.shift || modifiers.alt) && (
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 flex gap-2">
+          {modifiers.shift && <div className="px-2 py-1 rounded text-[10px] font-medium bg-amber-500/20 border border-amber-500/40 text-amber-300">SHIFT: {activeTool === "line" || activeTool === "arrow" ? "45° Snap" : "Perfect Shape"}</div>}
+          {modifiers.alt && <div className="px-2 py-1 rounded text-[10px] font-medium bg-purple-500/20 border border-purple-500/40 text-purple-300">ALT: Draw from Center</div>}
+        </div>
+      )}
+    </div>
+  );
+};
 
 // Module-level state for overlays
 interface OverlayState {
@@ -193,6 +314,20 @@ export const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({ width, heigh
   const startPointRef = useRef<{ x: number; y: number } | null>(null);
   const endPointRef = useRef<{ x: number; y: number } | null>(null);
   const currentObjectRef = useRef<fabric.Object | null>(null);
+
+  // Clipboard for copy/paste
+  const clipboardRef = useRef<fabric.Object | null>(null);
+
+  // Drawing modifiers state (Shift, Alt, Ctrl)
+  const [modifiers, setModifiers] = useState<DrawingModifiers>({ shift: false, alt: false, ctrl: false });
+  const [showGuides, setShowGuides] = useState(false);
+  const [guideMode, setGuideMode] = useState<"drawing" | "moving">("drawing");
+  const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null);
+  const [currentPoint, setCurrentPoint] = useState<{ x: number; y: number } | null>(null);
+  const [drawingInfo, setDrawingInfo] = useState<DrawingInfo | null>(null);
+  const [movingObjectBounds, setMovingObjectBounds] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
+  const [snapLines, setSnapLines] = useState<{ vertical: number[]; horizontal: number[] }>({ vertical: [], horizontal: [] });
+  const modifiersRef = useRef<DrawingModifiers>({ shift: false, alt: false, ctrl: false });
 
   const { activeTool, config, numberingCounter, incrementNumbering, activePresets, textToolState, setTextToolState, setActiveTool } = useToolStore();
 
@@ -382,6 +517,240 @@ export const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({ width, heigh
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [activeTool, saveHistory]);
 
+  // Advanced keyboard shortcuts: Duplicate, Copy, Paste, Flip, Nudge, Rotate
+  useEffect(() => {
+    const handleAdvancedKeys = (e: KeyboardEvent) => {
+      const canvas = fabricRef.current;
+      if (!canvas) return;
+
+      const activeObj = canvas.getActiveObject();
+
+      // Ctrl+C: Copy (works with selection)
+      if ((e.ctrlKey || e.metaKey) && e.key === "c") {
+        if (!activeObj || activeTool !== "select") return;
+        if (activeObj.data?.type === "spotlight-overlay" || activeObj.data?.type === "crop-overlay") return;
+
+        e.preventDefault();
+        activeObj.clone(
+          (cloned: fabric.Object) => {
+            clipboardRef.current = cloned;
+          },
+          ["data", "selectable", "evented"]
+        );
+        return;
+      }
+
+      // Ctrl+V: Paste
+      if ((e.ctrlKey || e.metaKey) && e.key === "v") {
+        if (!clipboardRef.current) return;
+
+        e.preventDefault();
+
+        // Store original data before cloning (clone may not preserve nested objects properly)
+        const originalData = clipboardRef.current.data ? { ...clipboardRef.current.data } : null;
+
+        // Clone with custom properties preserved
+        clipboardRef.current.clone(
+          (cloned: fabric.Object) => {
+            // Manually copy data property to ensure it's preserved
+            if (originalData) {
+              cloned.data = { ...originalData };
+            }
+
+            cloned.set({
+              left: (cloned.left || 0) + 20,
+              top: (cloned.top || 0) + 20,
+              evented: true,
+              selectable: true,
+            });
+
+            // For IText objects, ensure editing capability is preserved
+            if (cloned.type === "i-text") {
+              (cloned as fabric.IText).set({
+                editable: true,
+              });
+            }
+
+            canvas.add(cloned);
+            canvas.setActiveObject(cloned);
+            canvas.renderAll();
+            saveHistory();
+
+            // Update clipboard position for next paste
+            clipboardRef.current!.set({
+              left: (clipboardRef.current!.left || 0) + 20,
+              top: (clipboardRef.current!.top || 0) + 20,
+            });
+          },
+          ["data", "selectable", "evented"]
+        );
+        return;
+      }
+
+      // Ctrl+X: Cut
+      if ((e.ctrlKey || e.metaKey) && e.key === "x") {
+        if (!activeObj || activeTool !== "select") return;
+        if (activeObj.data?.type === "spotlight-overlay" || activeObj.data?.type === "crop-overlay") return;
+
+        e.preventDefault();
+        activeObj.clone(
+          (cloned: fabric.Object) => {
+            clipboardRef.current = cloned;
+          },
+          ["data", "selectable", "evented"]
+        );
+        canvas.remove(activeObj);
+        canvas.discardActiveObject();
+        canvas.renderAll();
+        saveHistory();
+        return;
+      }
+
+      // Rest of shortcuts require active selection
+      if (!activeObj || activeTool !== "select") return;
+      if (activeObj.data?.type === "spotlight-overlay" || activeObj.data?.type === "crop-overlay") return;
+
+      // Ctrl+D: Duplicate
+      if ((e.ctrlKey || e.metaKey) && e.key === "d") {
+        e.preventDefault();
+        activeObj.clone(
+          (cloned: fabric.Object) => {
+            cloned.set({
+              left: (activeObj.left || 0) + 20,
+              top: (activeObj.top || 0) + 20,
+              evented: true,
+              selectable: true,
+            });
+            // For IText objects, ensure editing capability is preserved
+            if (cloned.type === "i-text") {
+              (cloned as fabric.IText).set({
+                editable: true,
+              });
+            }
+            canvas.add(cloned);
+            canvas.setActiveObject(cloned);
+            canvas.renderAll();
+            saveHistory();
+          },
+          ["data", "selectable", "evented"]
+        );
+        return;
+      }
+
+      // Ctrl+H: Flip Horizontal
+      if ((e.ctrlKey || e.metaKey) && e.key === "h") {
+        e.preventDefault();
+        activeObj.set({ flipX: !activeObj.flipX });
+        canvas.renderAll();
+        saveHistory();
+        return;
+      }
+
+      // Ctrl+J: Flip Vertical (J because V is for paste)
+      if ((e.ctrlKey || e.metaKey) && e.key === "j") {
+        e.preventDefault();
+        activeObj.set({ flipY: !activeObj.flipY });
+        canvas.renderAll();
+        saveHistory();
+        return;
+      }
+
+      // Arrow keys: Nudge (1px, or 10px with Shift)
+      if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
+        e.preventDefault();
+        const step = e.shiftKey ? 10 : 1;
+        const left = activeObj.left || 0;
+        const top = activeObj.top || 0;
+
+        switch (e.key) {
+          case "ArrowUp":
+            activeObj.set({ top: top - step });
+            break;
+          case "ArrowDown":
+            activeObj.set({ top: top + step });
+            break;
+          case "ArrowLeft":
+            activeObj.set({ left: left - step });
+            break;
+          case "ArrowRight":
+            activeObj.set({ left: left + step });
+            break;
+        }
+        canvas.renderAll();
+        // Only save history on key up to avoid flooding
+        return;
+      }
+
+      // Ctrl+[ and Ctrl+]: Rotate by 15° (or 1° with Shift)
+      if ((e.ctrlKey || e.metaKey) && (e.key === "[" || e.key === "]")) {
+        e.preventDefault();
+        const rotateStep = e.shiftKey ? 1 : 15;
+        const currentAngle = activeObj.angle || 0;
+        const newAngle = e.key === "]" ? currentAngle + rotateStep : currentAngle - rotateStep;
+        activeObj.rotate(newAngle);
+        canvas.renderAll();
+        saveHistory();
+        return;
+      }
+
+      // Ctrl+0: Reset rotation
+      if ((e.ctrlKey || e.metaKey) && e.key === "0") {
+        e.preventDefault();
+        activeObj.rotate(0);
+        canvas.renderAll();
+        saveHistory();
+        return;
+      }
+    };
+
+    // Save history on arrow key up (for nudge)
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
+        const canvas = fabricRef.current;
+        if (canvas && activeTool === "select") {
+          saveHistory();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleAdvancedKeys);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleAdvancedKeys);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [activeTool, saveHistory]);
+
+  // Modifier keys tracking (Shift, Alt, Ctrl) for constraint drawing
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const newModifiers = {
+        shift: e.shiftKey,
+        alt: e.altKey,
+        ctrl: e.ctrlKey || e.metaKey,
+      };
+      modifiersRef.current = newModifiers;
+      setModifiers(newModifiers);
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      const newModifiers = {
+        shift: e.shiftKey,
+        alt: e.altKey,
+        ctrl: e.ctrlKey || e.metaKey,
+      };
+      modifiersRef.current = newModifiers;
+      setModifiers(newModifiers);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, []);
+
   // Main event handlers
   useEffect(() => {
     const canvas = fabricRef.current;
@@ -436,8 +805,22 @@ export const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({ width, heigh
       }
 
       const pointer = canvas.getPointer(opt.e);
+      const mouseEvent = opt.e as MouseEvent;
+
+      // Update modifiers from actual mouse event
+      modifiersRef.current = {
+        shift: mouseEvent.shiftKey,
+        alt: mouseEvent.altKey,
+        ctrl: mouseEvent.ctrlKey || mouseEvent.metaKey,
+      };
+      setModifiers(modifiersRef.current);
+
       isDrawingRef.current = true;
       startPointRef.current = { x: pointer.x, y: pointer.y };
+      setStartPoint({ x: pointer.x, y: pointer.y });
+      setShowGuides(true);
+      setGuideMode("drawing");
+      setCurrentPoint({ x: pointer.x, y: pointer.y });
 
       let obj: fabric.Object | null = null;
 
@@ -504,6 +887,8 @@ export const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({ width, heigh
           canvas.add(group);
           incrementNumbering();
           isDrawingRef.current = false;
+          setShowGuides(false);
+          setStartPoint(null);
           saveHistory();
           return;
 
@@ -587,54 +972,151 @@ export const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({ width, heigh
       if (!isDrawingRef.current || !startPointRef.current || !currentObjectRef.current) return;
 
       const pointer = canvas.getPointer(opt.e);
+      const mouseEvent = opt.e as MouseEvent;
       const start = startPointRef.current;
       const obj = currentObjectRef.current;
+
+      // Update modifiers in real-time
+      const currentModifiers = {
+        shift: mouseEvent.shiftKey,
+        alt: mouseEvent.altKey,
+        ctrl: mouseEvent.ctrlKey || mouseEvent.metaKey,
+      };
+      modifiersRef.current = currentModifiers;
+      setModifiers(currentModifiers);
+      setCurrentPoint({ x: pointer.x, y: pointer.y });
+
+      // Calculate constrained coordinates
+      let targetX = pointer.x;
+      let targetY = pointer.y;
+      let constrainedWidth = Math.abs(pointer.x - start.x);
+      let constrainedHeight = Math.abs(pointer.y - start.y);
+
+      // SHIFT: Constraint to perfect shapes or 45° angles
+      if (currentModifiers.shift) {
+        if (activeTool === "line" || activeTool === "arrow") {
+          // Snap to 0°, 45°, 90°, 135°, 180° etc.
+          const dx = pointer.x - start.x;
+          const dy = pointer.y - start.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          const angle = Math.atan2(dy, dx);
+          const snappedAngle = Math.round(angle / (Math.PI / 4)) * (Math.PI / 4);
+          targetX = start.x + Math.cos(snappedAngle) * distance;
+          targetY = start.y + Math.sin(snappedAngle) * distance;
+        } else {
+          // Perfect square/circle - use the larger dimension
+          const maxDim = Math.max(constrainedWidth, constrainedHeight);
+          constrainedWidth = maxDim;
+          constrainedHeight = maxDim;
+          // Adjust target based on direction
+          targetX = start.x + (pointer.x >= start.x ? maxDim : -maxDim);
+          targetY = start.y + (pointer.y >= start.y ? maxDim : -maxDim);
+        }
+      }
+
+      // Calculate drawing info for tooltip
+      const dx = targetX - start.x;
+      const dy = targetY - start.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+      setDrawingInfo({
+        width: constrainedWidth,
+        height: constrainedHeight,
+        distance: activeTool === "line" || activeTool === "arrow" ? distance : undefined,
+        angle: activeTool === "line" || activeTool === "arrow" ? (angle + 360) % 360 : undefined,
+      });
 
       switch (activeTool) {
         case "arrow":
           // Remove old preview and create new one with updated end point
           canvas.remove(obj);
-          endPointRef.current = { x: pointer.x, y: pointer.y };
+          endPointRef.current = { x: targetX, y: targetY };
           const arrowPreset = ARROW_PRESETS.find((p) => p.id === activePresets.arrow);
-          const newPreview = createArrowPreview(start.x, start.y, pointer.x, pointer.y, config.strokeWidth, config.strokeColor, activePresets.arrow === "arrow-curved", arrowPreset?.style.strokeDashArray);
+          const newPreview = createArrowPreview(start.x, start.y, targetX, targetY, config.strokeWidth, config.strokeColor, activePresets.arrow === "arrow-curved", arrowPreset?.style.strokeDashArray);
           currentObjectRef.current = newPreview;
           canvas.add(newPreview);
           break;
 
         case "line":
-          (obj as fabric.Line).set({ x2: pointer.x, y2: pointer.y });
+          (obj as fabric.Line).set({ x2: targetX, y2: targetY });
           break;
 
         case "rectangle":
         case "blur":
         case "crop":
-          const left = Math.min(start.x, pointer.x);
-          const top = Math.min(start.y, pointer.y);
-          const w = Math.abs(pointer.x - start.x);
-          const h = Math.abs(pointer.y - start.y);
-          (obj as fabric.Rect).set({ left, top, width: w, height: h });
+          if (currentModifiers.alt) {
+            // ALT: Draw from center
+            const halfW = constrainedWidth;
+            const halfH = constrainedHeight;
+            (obj as fabric.Rect).set({
+              left: start.x - halfW,
+              top: start.y - halfH,
+              width: halfW * 2,
+              height: halfH * 2,
+            });
+            setDrawingInfo({ width: halfW * 2, height: halfH * 2 });
+          } else {
+            // Normal: Draw from corner
+            const left = currentModifiers.shift ? (pointer.x >= start.x ? start.x : start.x - constrainedWidth) : Math.min(start.x, pointer.x);
+            const top = currentModifiers.shift ? (pointer.y >= start.y ? start.y : start.y - constrainedHeight) : Math.min(start.y, pointer.y);
+            (obj as fabric.Rect).set({
+              left,
+              top,
+              width: constrainedWidth,
+              height: constrainedHeight,
+            });
+          }
           break;
 
         case "ellipse":
-          const rx = Math.abs(pointer.x - start.x) / 2;
-          const ry = Math.abs(pointer.y - start.y) / 2;
-          const cx = (start.x + pointer.x) / 2;
-          const cy = (start.y + pointer.y) / 2;
-          (obj as fabric.Ellipse).set({ left: cx, top: cy, rx, ry });
+          if (currentModifiers.alt) {
+            // ALT: Draw from center (ellipse already uses center origin)
+            const rx = constrainedWidth;
+            const ry = currentModifiers.shift ? constrainedWidth : constrainedHeight;
+            (obj as fabric.Ellipse).set({ left: start.x, top: start.y, rx, ry });
+            setDrawingInfo({ width: rx * 2, height: ry * 2 });
+          } else {
+            // Normal: Bounding box style
+            const rx = constrainedWidth / 2;
+            const ry = currentModifiers.shift ? constrainedWidth / 2 : constrainedHeight / 2;
+            const cx = (start.x + (currentModifiers.shift ? (pointer.x >= start.x ? start.x + constrainedWidth : start.x - constrainedWidth) : pointer.x)) / 2;
+            const cy = (start.y + (currentModifiers.shift ? (pointer.y >= start.y ? start.y + constrainedHeight : start.y - constrainedHeight) : pointer.y)) / 2;
+            (obj as fabric.Ellipse).set({ left: cx, top: cy, rx, ry });
+          }
           break;
 
         case "spotlight":
           if (config.spotlightShape === "circle") {
-            const radius = Math.max(Math.abs(pointer.x - start.x), Math.abs(pointer.y - start.y)) / 2;
-            const ccx = (start.x + pointer.x) / 2;
-            const ccy = (start.y + pointer.y) / 2;
-            (obj as fabric.Circle).set({ left: ccx, top: ccy, radius });
+            if (currentModifiers.alt) {
+              // Draw from center
+              const radius = Math.max(constrainedWidth, constrainedHeight);
+              (obj as fabric.Circle).set({ left: start.x, top: start.y, radius });
+              setDrawingInfo({ width: radius * 2, height: radius * 2 });
+            } else {
+              const radius = Math.max(constrainedWidth, constrainedHeight) / 2;
+              const ccx = (start.x + pointer.x) / 2;
+              const ccy = (start.y + pointer.y) / 2;
+              (obj as fabric.Circle).set({ left: ccx, top: ccy, radius });
+            }
           } else {
-            const sleft = Math.min(start.x, pointer.x);
-            const stop = Math.min(start.y, pointer.y);
-            const sw = Math.abs(pointer.x - start.x);
-            const sh = Math.abs(pointer.y - start.y);
-            (obj as fabric.Rect).set({ left: sleft, top: stop, width: sw, height: sh });
+            if (currentModifiers.alt) {
+              // Draw from center
+              const w = currentModifiers.shift ? Math.max(constrainedWidth, constrainedHeight) : constrainedWidth;
+              const h = currentModifiers.shift ? Math.max(constrainedWidth, constrainedHeight) : constrainedHeight;
+              (obj as fabric.Rect).set({
+                left: start.x - w,
+                top: start.y - h,
+                width: w * 2,
+                height: h * 2,
+              });
+              setDrawingInfo({ width: w * 2, height: h * 2 });
+            } else {
+              const w = currentModifiers.shift ? Math.max(constrainedWidth, constrainedHeight) : constrainedWidth;
+              const h = currentModifiers.shift ? Math.max(constrainedWidth, constrainedHeight) : constrainedHeight;
+              const sleft = currentModifiers.shift ? (pointer.x >= start.x ? start.x : start.x - w) : Math.min(start.x, pointer.x);
+              const stop = currentModifiers.shift ? (pointer.y >= start.y ? start.y : start.y - h) : Math.min(start.y, pointer.y);
+              (obj as fabric.Rect).set({ left: sleft, top: stop, width: w, height: h });
+            }
           }
           break;
       }
@@ -649,6 +1131,12 @@ export const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({ width, heigh
       if (!canvas || !currentObjectRef.current) return;
 
       const obj = currentObjectRef.current;
+
+      // Hide guides and reset drawing info
+      setShowGuides(false);
+      setStartPoint(null);
+      setDrawingInfo(null);
+      setCurrentPoint(null);
 
       // Handle spotlight - additive holes
       if (activeTool === "spotlight") {
@@ -785,11 +1273,124 @@ export const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({ width, heigh
       saveHistory();
     };
 
+    // Object moving handlers for smart guides
+    const handleObjectMoving = (e: fabric.IEvent) => {
+      const obj = e.target;
+      if (!obj || obj.data?.type === "spotlight-overlay" || obj.data?.type === "crop-overlay") return;
+
+      const objLeft = obj.left || 0;
+      const objTop = obj.top || 0;
+      const objWidth = obj.getScaledWidth();
+      const objHeight = obj.getScaledHeight();
+      const objCenterX = objLeft + objWidth / 2;
+      const objCenterY = objTop + objHeight / 2;
+      const objRight = objLeft + objWidth;
+      const objBottom = objTop + objHeight;
+
+      const canvasCenterX = width / 2;
+      const canvasCenterY = height / 2;
+      const SNAP_THRESHOLD = 8;
+
+      // Calculate snap lines from other objects
+      const verticalSnaps: number[] = [];
+      const horizontalSnaps: number[] = [];
+
+      canvas.getObjects().forEach((other) => {
+        if (other === obj || other.data?.type === "spotlight-overlay" || other.data?.type === "crop-overlay") return;
+
+        const otherLeft = other.left || 0;
+        const otherTop = other.top || 0;
+        const otherWidth = other.getScaledWidth();
+        const otherHeight = other.getScaledHeight();
+        const otherCenterX = otherLeft + otherWidth / 2;
+        const otherCenterY = otherTop + otherHeight / 2;
+        const otherRight = otherLeft + otherWidth;
+        const otherBottom = otherTop + otherHeight;
+
+        // Vertical alignments (left, center, right edges)
+        if (Math.abs(objLeft - otherLeft) < SNAP_THRESHOLD) verticalSnaps.push(otherLeft);
+        if (Math.abs(objLeft - otherCenterX) < SNAP_THRESHOLD) verticalSnaps.push(otherCenterX);
+        if (Math.abs(objLeft - otherRight) < SNAP_THRESHOLD) verticalSnaps.push(otherRight);
+        if (Math.abs(objCenterX - otherLeft) < SNAP_THRESHOLD) verticalSnaps.push(otherLeft);
+        if (Math.abs(objCenterX - otherCenterX) < SNAP_THRESHOLD) verticalSnaps.push(otherCenterX);
+        if (Math.abs(objCenterX - otherRight) < SNAP_THRESHOLD) verticalSnaps.push(otherRight);
+        if (Math.abs(objRight - otherLeft) < SNAP_THRESHOLD) verticalSnaps.push(otherLeft);
+        if (Math.abs(objRight - otherCenterX) < SNAP_THRESHOLD) verticalSnaps.push(otherCenterX);
+        if (Math.abs(objRight - otherRight) < SNAP_THRESHOLD) verticalSnaps.push(otherRight);
+
+        // Horizontal alignments (top, center, bottom edges)
+        if (Math.abs(objTop - otherTop) < SNAP_THRESHOLD) horizontalSnaps.push(otherTop);
+        if (Math.abs(objTop - otherCenterY) < SNAP_THRESHOLD) horizontalSnaps.push(otherCenterY);
+        if (Math.abs(objTop - otherBottom) < SNAP_THRESHOLD) horizontalSnaps.push(otherBottom);
+        if (Math.abs(objCenterY - otherTop) < SNAP_THRESHOLD) horizontalSnaps.push(otherTop);
+        if (Math.abs(objCenterY - otherCenterY) < SNAP_THRESHOLD) horizontalSnaps.push(otherCenterY);
+        if (Math.abs(objCenterY - otherBottom) < SNAP_THRESHOLD) horizontalSnaps.push(otherBottom);
+        if (Math.abs(objBottom - otherTop) < SNAP_THRESHOLD) horizontalSnaps.push(otherTop);
+        if (Math.abs(objBottom - otherCenterY) < SNAP_THRESHOLD) horizontalSnaps.push(otherCenterY);
+        if (Math.abs(objBottom - otherBottom) < SNAP_THRESHOLD) horizontalSnaps.push(otherBottom);
+      });
+
+      // Snap to canvas center
+      if (Math.abs(objCenterX - canvasCenterX) < SNAP_THRESHOLD) {
+        obj.set({ left: canvasCenterX - objWidth / 2 });
+      }
+      if (Math.abs(objCenterY - canvasCenterY) < SNAP_THRESHOLD) {
+        obj.set({ top: canvasCenterY - objHeight / 2 });
+      }
+
+      setSnapLines({ vertical: [...new Set(verticalSnaps)], horizontal: [...new Set(horizontalSnaps)] });
+      setMovingObjectBounds({ left: obj.left || 0, top: obj.top || 0, width: objWidth, height: objHeight });
+      setShowGuides(true);
+      setGuideMode("moving");
+    };
+
+    const handleObjectMoved = () => {
+      setShowGuides(false);
+      setMovingObjectBounds(null);
+      setSnapLines({ vertical: [], horizontal: [] });
+    };
+
+    // Object rotating with Shift snap to 15° increments
+    const handleObjectRotating = (e: fabric.IEvent) => {
+      const obj = e.target;
+      if (!obj) return;
+
+      // Check if Shift is held for 15° snap
+      const event = e.e as MouseEvent;
+      if (event?.shiftKey) {
+        const currentAngle = obj.angle || 0;
+        const snappedAngle = Math.round(currentAngle / 15) * 15;
+        obj.rotate(snappedAngle);
+      }
+    };
+
+    // Clear guides on selection change
+    const handleSelectionCleared = () => {
+      setShowGuides(false);
+      setMovingObjectBounds(null);
+      setSnapLines({ vertical: [], horizontal: [] });
+    };
+
+    const handleSelectionCreated = () => {
+      // Clear any lingering guides when selecting new object
+      if (guideMode === "moving") {
+        setShowGuides(false);
+        setMovingObjectBounds(null);
+        setSnapLines({ vertical: [], horizontal: [] });
+      }
+    };
+
     canvas.on("mouse:down", handleMouseDown);
     canvas.on("mouse:move", handleMouseMove);
     canvas.on("mouse:up", handleMouseUp);
     canvas.on("path:created", handlePathCreated);
     canvas.on("object:modified", handleObjectModified);
+    canvas.on("object:moving", handleObjectMoving);
+    canvas.on("object:moved", handleObjectMoved);
+    canvas.on("object:rotating", handleObjectRotating);
+    canvas.on("selection:cleared", handleSelectionCleared);
+    canvas.on("selection:created", handleSelectionCreated);
+    canvas.on("selection:updated", handleSelectionCreated);
     canvas.on("text:editing:exited", handleTextEditingExited);
 
     return () => {
@@ -798,11 +1399,26 @@ export const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({ width, heigh
       canvas.off("mouse:up", handleMouseUp);
       canvas.off("path:created", handlePathCreated);
       canvas.off("object:modified", handleObjectModified);
+      canvas.off("object:moving", handleObjectMoving);
+      canvas.off("object:moved", handleObjectMoved);
+      canvas.off("object:rotating", handleObjectRotating);
+      canvas.off("selection:cleared", handleSelectionCleared);
+      canvas.off("selection:created", handleSelectionCreated);
+      canvas.off("selection:updated", handleSelectionCreated);
       canvas.off("text:editing:exited", handleTextEditingExited);
     };
-  }, [activeTool, config, numberingCounter, incrementNumbering, saveHistory, width, height, activePresets, textToolState, setTextToolState, setActiveTool]);
+  }, [activeTool, config, numberingCounter, incrementNumbering, saveHistory, width, height, activePresets, textToolState, setTextToolState, setActiveTool, guideMode]);
 
-  return <canvas ref={canvasRef} style={{ position: "absolute", top: 0, left: 0, cursor: activeTool === "select" ? "default" : "crosshair" }} />;
+  return (
+    <div className="absolute inset-0">
+      {/* Canvas container - isolated for Fabric.js DOM manipulation */}
+      <div className="absolute inset-0">
+        <canvas ref={canvasRef} style={{ position: "absolute", top: 0, left: 0, cursor: activeTool === "select" ? "default" : "crosshair" }} />
+      </div>
+      {/* Smart guides overlay - for both drawing and moving */}
+      {showGuides && <SmartGuides show={showGuides} mode={guideMode} objectBounds={movingObjectBounds} startPoint={startPoint} currentPoint={currentPoint} canvasWidth={width} canvasHeight={height} modifiers={modifiers} drawingInfo={drawingInfo} activeTool={activeTool} snapLines={snapLines} />}
+    </div>
+  );
 };
 
 // ============================================

@@ -23,6 +23,45 @@ const saveOptionsPanelPosition = (pos: { x: number; y: number }) => {
   } catch {}
 };
 
+// Keyboard shortcuts help content
+const SHORTCUTS_HELP = [
+  {
+    category: "Drawing",
+    shortcuts: [
+      { keys: "Shift", desc: "Perfect shapes / 45° lines" },
+      { keys: "Alt", desc: "Draw from center" },
+    ],
+  },
+  {
+    category: "Edit",
+    shortcuts: [
+      { keys: "Ctrl+C", desc: "Copy" },
+      { keys: "Ctrl+V", desc: "Paste" },
+      { keys: "Ctrl+X", desc: "Cut" },
+      { keys: "Ctrl+D", desc: "Duplicate" },
+      { keys: "Delete", desc: "Delete object" },
+    ],
+  },
+  {
+    category: "Transform",
+    shortcuts: [
+      { keys: "Ctrl+H", desc: "Flip horizontal" },
+      { keys: "Ctrl+J", desc: "Flip vertical" },
+      { keys: "Ctrl+[/]", desc: "Rotate 15°" },
+      { keys: "Arrows", desc: "Nudge 1px" },
+      { keys: "Shift+Arrows", desc: "Nudge 10px" },
+    ],
+  },
+  {
+    category: "General",
+    shortcuts: [
+      { keys: "Ctrl+Z", desc: "Undo" },
+      { keys: "Ctrl+Shift+Z", desc: "Redo" },
+      { keys: "Ctrl+S", desc: "Save" },
+    ],
+  },
+];
+
 interface OptionsPanelProps {
   onSave: () => void;
   onClear: () => void;
@@ -44,6 +83,7 @@ export const OptionsPanel: React.FC<OptionsPanelProps> = ({ onSave, onClear, onC
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   const [position, setPosition] = useState<{ x: number; y: number } | null>(() => getOptionsPanelPosition());
   const dragRef = useRef<{ startX: number; startY: number; initialX: number; initialY: number } | null>(null);
 
@@ -279,6 +319,36 @@ export const OptionsPanel: React.FC<OptionsPanelProps> = ({ onSave, onClear, onC
 
   return (
     <div className="options-panel" style={panelStyle} onMouseDown={handleDragStart}>
+      {/* Shortcuts Help Button */}
+      <div className="relative">
+        <button className={`action-btn ${showShortcuts ? "text-amber-glow" : "hover:text-amber-warm"}`} onClick={() => setShowShortcuts(!showShortcuts)} title="Keyboard Shortcuts">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+            <rect x="2" y="5" width="14" height="10" rx="2" />
+            <path d="M5 8h1M8 8h2M12 8h1M5 11h8" />
+          </svg>
+        </button>
+
+        {/* Shortcuts Popup */}
+        {showShortcuts && (
+          <div className="absolute bottom-full left-0 mb-2 w-56 p-3 rounded-xl bg-cinema-dark/98 border border-cinema-border shadow-cinematic backdrop-blur-md animate-scale-in">
+            <div className="text-[10px] font-semibold text-amber-warm uppercase tracking-wider mb-2">Keyboard Shortcuts</div>
+            {SHORTCUTS_HELP.map((cat) => (
+              <div key={cat.category} className="mb-2.5 last:mb-0">
+                <div className="text-[9px] text-silver-muted uppercase tracking-wider mb-1">{cat.category}</div>
+                {cat.shortcuts.map((s) => (
+                  <div key={s.keys} className="flex justify-between items-center py-0.5">
+                    <span className="text-[10px] text-silver">{s.desc}</span>
+                    <kbd className="text-[9px] px-1.5 py-0.5 rounded bg-cinema-elevated border border-cinema-border text-amber-muted font-mono">{s.keys}</kbd>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="w-px h-5 bg-gradient-to-b from-transparent via-cinema-border-strong to-transparent" />
+
       {/* Undo/Redo */}
       <div className="flex items-center gap-1">
         <button className={`action-btn ${!canUndo() ? "opacity-30 cursor-not-allowed" : "hover:text-amber-warm"}`} onClick={handleUndo} disabled={!canUndo()} title="Undo (Ctrl+Z)">

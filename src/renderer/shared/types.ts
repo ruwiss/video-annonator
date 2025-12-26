@@ -9,6 +9,35 @@ export interface Bounds {
   height: number;
 }
 
+// ============================================
+// DRAWING CONSTRAINTS & GUIDES
+// ============================================
+
+export interface DrawingModifiers {
+  shift: boolean;  // Constraint: perfect shapes (square, circle, 45° lines)
+  alt: boolean;    // Draw from center
+  ctrl: boolean;   // Snap to grid/guides
+}
+
+export interface GuideLines {
+  horizontal: number[];  // Y positions
+  vertical: number[];    // X positions
+  center: { x: number; y: number };
+}
+
+export interface SnapPoint {
+  x: number;
+  y: number;
+  type: 'center' | 'edge' | 'corner' | 'grid';
+}
+
+export interface DrawingInfo {
+  width: number;
+  height: number;
+  angle?: number;
+  distance?: number;
+}
+
 export interface DisplayInfo {
   id: number;
   bounds: Bounds;
