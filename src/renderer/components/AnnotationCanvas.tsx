@@ -318,6 +318,9 @@ export const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({ width, heigh
   // Clipboard for copy/paste
   const clipboardRef = useRef<fabric.Object | null>(null);
 
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; show: boolean }>({ x: 0, y: 0, show: false });
+
   // Drawing modifiers state (Shift, Alt, Ctrl)
   const [modifiers, setModifiers] = useState<DrawingModifiers>({ shift: false, alt: false, ctrl: false });
   const [showGuides, setShowGuides] = useState(false);
@@ -1364,6 +1367,45 @@ export const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({ width, heigh
       }
     };
 
+    // Object scaling with Shift for uniform scaling (maintain aspect ratio)
+    const handleObjectScaling = (e: fabric.IEvent) => {
+      const obj = e.target;
+      if (!obj) return;
+
+      const event = e.e as MouseEvent;
+      if (!event?.shiftKey) {
+        // Clear stored ratio when Shift is not held
+        (obj as any).__originalAspectRatio = null;
+        return;
+      }
+
+      // Store original aspect ratio on first Shift+scale
+      if (!(obj as any).__originalAspectRatio) {
+        const objWidth = (obj.width || 1) * (obj.scaleX || 1);
+        const objHeight = (obj.height || 1) * (obj.scaleY || 1);
+        (obj as any).__originalAspectRatio = objWidth / objHeight;
+      }
+
+      const aspectRatio = (obj as any).__originalAspectRatio;
+      const scaleX = obj.scaleX || 1;
+      const scaleY = obj.scaleY || 1;
+      const width = obj.width || 1;
+      const height = obj.height || 1;
+
+      // Calculate current dimensions
+      const currentWidth = width * scaleX;
+      const currentHeight = height * scaleY;
+      const currentRatio = currentWidth / currentHeight;
+
+      // If ratio changed, correct it
+      if (Math.abs(currentRatio - aspectRatio) > 0.01) {
+        // Determine which dimension to adjust based on which changed more
+        const newHeight = currentWidth / aspectRatio;
+        const newScaleY = newHeight / height;
+        obj.set({ scaleY: newScaleY });
+      }
+    };
+
     // Clear guides on selection change
     const handleSelectionCleared = () => {
       setShowGuides(false);
@@ -1388,6 +1430,7 @@ export const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({ width, heigh
     canvas.on("object:moving", handleObjectMoving);
     canvas.on("object:moved", handleObjectMoved);
     canvas.on("object:rotating", handleObjectRotating);
+    canvas.on("object:scaling", handleObjectScaling);
     canvas.on("selection:cleared", handleSelectionCleared);
     canvas.on("selection:created", handleSelectionCreated);
     canvas.on("selection:updated", handleSelectionCreated);
@@ -1402,6 +1445,7 @@ export const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({ width, heigh
       canvas.off("object:moving", handleObjectMoving);
       canvas.off("object:moved", handleObjectMoved);
       canvas.off("object:rotating", handleObjectRotating);
+      canvas.off("object:scaling", handleObjectScaling);
       canvas.off("selection:cleared", handleSelectionCleared);
       canvas.off("selection:created", handleSelectionCreated);
       canvas.off("selection:updated", handleSelectionCreated);
@@ -1409,14 +1453,173 @@ export const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({ width, heigh
     };
   }, [activeTool, config, numberingCounter, incrementNumbering, saveHistory, width, height, activePresets, textToolState, setTextToolState, setActiveTool, guideMode]);
 
+  // Context menu handlers
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    const activeObj = canvas.getActiveObject();
+    // Only show context menu if an object is selected and it's not an overlay
+    if (!activeObj || activeObj.data?.type === "spotlight-overlay" || activeObj.data?.type === "crop-overlay") {
+      setContextMenu({ x: 0, y: 0, show: false });
+      return;
+    }
+
+    setContextMenu({ x: e.clientX, y: e.clientY, show: true });
+  }, []);
+
+  const handleContextMenuAction = useCallback(
+    (action: "bringToFront" | "bringForward" | "sendBackward" | "sendToBack" | "duplicate" | "delete") => {
+      const canvas = fabricRef.current;
+      if (!canvas) return;
+
+      const activeObj = canvas.getActiveObject();
+      if (!activeObj) return;
+
+      switch (action) {
+        case "bringToFront":
+          canvas.bringToFront(activeObj);
+          // Keep spotlight overlay at back if exists
+          const spotlightOverlay = canvas.getObjects().find((obj) => obj.data?.type === "spotlight-overlay");
+          if (spotlightOverlay) canvas.sendToBack(spotlightOverlay);
+          break;
+        case "bringForward":
+          canvas.bringForward(activeObj);
+          break;
+        case "sendBackward":
+          canvas.sendBackwards(activeObj);
+          // Don't go behind spotlight overlay
+          const spotlight = canvas.getObjects().find((obj) => obj.data?.type === "spotlight-overlay");
+          if (spotlight) {
+            const objIndex = canvas.getObjects().indexOf(activeObj);
+            const spotlightIndex = canvas.getObjects().indexOf(spotlight);
+            if (objIndex <= spotlightIndex) {
+              canvas.bringForward(activeObj);
+            }
+          }
+          break;
+        case "sendToBack":
+          canvas.sendToBack(activeObj);
+          // Keep above spotlight overlay if exists
+          const spotlightBg = canvas.getObjects().find((obj) => obj.data?.type === "spotlight-overlay");
+          if (spotlightBg) {
+            canvas.sendToBack(spotlightBg);
+          }
+          break;
+        case "duplicate":
+          activeObj.clone(
+            (cloned: fabric.Object) => {
+              const originalData = activeObj.data ? { ...activeObj.data } : null;
+              if (originalData) cloned.data = { ...originalData };
+              cloned.set({
+                left: (activeObj.left || 0) + 20,
+                top: (activeObj.top || 0) + 20,
+                evented: true,
+                selectable: true,
+              });
+              if (cloned.type === "i-text") {
+                (cloned as fabric.IText).set({ editable: true });
+              }
+              canvas.add(cloned);
+              canvas.setActiveObject(cloned);
+              canvas.renderAll();
+              saveHistory();
+            },
+            ["data", "selectable", "evented"]
+          );
+          break;
+        case "delete":
+          canvas.remove(activeObj);
+          canvas.discardActiveObject();
+          break;
+      }
+
+      canvas.renderAll();
+      if (action !== "duplicate") saveHistory();
+      setContextMenu({ x: 0, y: 0, show: false });
+    },
+    [saveHistory]
+  );
+
+  // Close context menu on click outside or escape
+  useEffect(() => {
+    const handleClickOutside = () => setContextMenu({ x: 0, y: 0, show: false });
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setContextMenu({ x: 0, y: 0, show: false });
+    };
+
+    if (contextMenu.show) {
+      document.addEventListener("click", handleClickOutside);
+      document.addEventListener("keydown", handleEscape);
+    }
+
+    return () => {
+      document.removeEventListener("click", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [contextMenu.show]);
+
   return (
-    <div className="absolute inset-0">
+    <div className="absolute inset-0" onContextMenu={handleContextMenu}>
       {/* Canvas container - isolated for Fabric.js DOM manipulation */}
       <div className="absolute inset-0">
         <canvas ref={canvasRef} style={{ position: "absolute", top: 0, left: 0, cursor: activeTool === "select" ? "default" : "crosshair" }} />
       </div>
       {/* Smart guides overlay - for both drawing and moving */}
       {showGuides && <SmartGuides show={showGuides} mode={guideMode} objectBounds={movingObjectBounds} startPoint={startPoint} currentPoint={currentPoint} canvasWidth={width} canvasHeight={height} modifiers={modifiers} drawingInfo={drawingInfo} activeTool={activeTool} snapLines={snapLines} />}
+
+      {/* Context Menu */}
+      {contextMenu.show && (
+        <div className="fixed z-50 min-w-[160px] py-1.5 bg-cinema-dark/98 border border-cinema-border rounded-lg shadow-cinematic backdrop-blur-md animate-in fade-in zoom-in-95 duration-100" style={{ left: contextMenu.x, top: contextMenu.y }} onClick={(e) => e.stopPropagation()}>
+          <button className="w-full px-3 py-1.5 text-left text-xs text-silver hover:bg-cinema-elevated hover:text-amber-warm transition-colors flex items-center gap-2.5" onClick={() => handleContextMenuAction("bringToFront")}>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <rect x="1" y="5" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.2" />
+              <rect x="7" y="3" width="6" height="6" rx="1" fill="currentColor" fillOpacity="0.3" stroke="currentColor" strokeWidth="1.2" />
+            </svg>
+            <span>En Üste Getir</span>
+          </button>
+          <button className="w-full px-3 py-1.5 text-left text-xs text-silver hover:bg-cinema-elevated hover:text-amber-warm transition-colors flex items-center gap-2.5" onClick={() => handleContextMenuAction("bringForward")}>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <rect x="2" y="5" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.2" />
+              <rect x="7" y="4" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.2" />
+            </svg>
+            <span>Bir Üste Getir</span>
+          </button>
+          <button className="w-full px-3 py-1.5 text-left text-xs text-silver hover:bg-cinema-elevated hover:text-amber-warm transition-colors flex items-center gap-2.5" onClick={() => handleContextMenuAction("sendBackward")}>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <rect x="7" y="5" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.2" />
+              <rect x="2" y="4" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.2" />
+            </svg>
+            <span>Bir Alta Gönder</span>
+          </button>
+          <button className="w-full px-3 py-1.5 text-left text-xs text-silver hover:bg-cinema-elevated hover:text-amber-warm transition-colors flex items-center gap-2.5" onClick={() => handleContextMenuAction("sendToBack")}>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <rect x="7" y="3" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.2" />
+              <rect x="1" y="5" width="6" height="6" rx="1" fill="currentColor" fillOpacity="0.3" stroke="currentColor" strokeWidth="1.2" />
+            </svg>
+            <span>En Alta Gönder</span>
+          </button>
+
+          <div className="my-1.5 border-t border-cinema-border" />
+
+          <button className="w-full px-3 py-1.5 text-left text-xs text-silver hover:bg-cinema-elevated hover:text-amber-warm transition-colors flex items-center gap-2.5" onClick={() => handleContextMenuAction("duplicate")}>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <rect x="1" y="4" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.2" />
+              <rect x="4" y="1" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.2" />
+            </svg>
+            <span>Çoğalt</span>
+            <span className="ml-auto text-[10px] text-silver-muted font-mono">Ctrl+D</span>
+          </button>
+          <button className="w-full px-3 py-1.5 text-left text-xs text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors flex items-center gap-2.5" onClick={() => handleContextMenuAction("delete")}>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M2 4h10M5 4V3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1M11 4v7a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+            </svg>
+            <span>Sil</span>
+            <span className="ml-auto text-[10px] text-silver-muted font-mono">Del</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 };
